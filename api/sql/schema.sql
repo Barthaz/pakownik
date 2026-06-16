@@ -1,5 +1,5 @@
-CREATE DATABASE IF NOT EXISTS pakownik CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE pakownik;
+-- Pakownik schema (SEOHOST / shared MySQL — bez CREATE DATABASE)
+-- Uruchom na istniejącej bazie, np. srv74754_pakownik
 
 CREATE TABLE IF NOT EXISTS users (
   id VARCHAR(36) PRIMARY KEY,
