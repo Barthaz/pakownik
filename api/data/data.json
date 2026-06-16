@@ -1,0 +1,396 @@
+{
+  "users": [
+    {
+      "id": "user-demo-1",
+      "email": "user@example.com",
+      "passwordHash": "$2b$12$EkqN7ZDMKsogXj2uH9WpJuYbAelSvCjAG/QILtvtJFK43dXry4GRq",
+      "createdAt": "2025-06-01T10:00:00.000Z"
+    }
+  ],
+  "familyMembers": [
+    {
+      "id": "fm-1",
+      "userId": "user-demo-1",
+      "name": "Anna"
+    },
+    {
+      "id": "fm-2",
+      "userId": "user-demo-1",
+      "name": "Tomek"
+    },
+    {
+      "id": "fm-3",
+      "userId": "user-demo-1",
+      "name": "Zosia"
+    }
+  ],
+  "familyMemberItems": [
+    {
+      "id": "fmi-1",
+      "familyMemberId": "fm-1",
+      "category": "Ubrania",
+      "name": "Koszulka",
+      "quantity": 3
+    },
+    {
+      "id": "fmi-2",
+      "familyMemberId": "fm-1",
+      "category": "Ubrania",
+      "name": "Spodenki",
+      "quantity": 2
+    },
+    {
+      "id": "fmi-3",
+      "familyMemberId": "fm-1",
+      "category": "Higiena",
+      "name": "Szczoteczka do zębów",
+      "quantity": 1
+    },
+    {
+      "id": "fmi-4",
+      "familyMemberId": "fm-1",
+      "category": "Higiena",
+      "name": "Krem z filtrem",
+      "quantity": 1
+    },
+    {
+      "id": "fmi-5",
+      "familyMemberId": "fm-2",
+      "category": "Ubrania",
+      "name": "Koszulka",
+      "quantity": 4
+    },
+    {
+      "id": "fmi-6",
+      "familyMemberId": "fm-2",
+      "category": "Ubrania",
+      "name": "Spodenki",
+      "quantity": 3
+    },
+    {
+      "id": "fmi-7",
+      "familyMemberId": "fm-2",
+      "category": "Elektronika",
+      "name": "Ładowarka telefonu",
+      "quantity": 1
+    },
+    {
+      "id": "fmi-8",
+      "familyMemberId": "fm-3",
+      "category": "Ubrania",
+      "name": "Body",
+      "quantity": 5
+    },
+    {
+      "id": "fmi-9",
+      "familyMemberId": "fm-3",
+      "category": "Apteczka",
+      "name": "Pieluchy",
+      "quantity": 20
+    },
+    {
+      "id": "fmi-10",
+      "familyMemberId": "fm-3",
+      "category": "Higiena",
+      "name": "Chusteczki nawilżane",
+      "quantity": 2
+    }
+  ],
+  "packingLists": [
+    {
+      "id": "list-1",
+      "userId": "user-demo-1",
+      "shareId": "wakacje24",
+      "name": "Wakacje nad morzem",
+      "sharePermission": "checkoff",
+      "selectedMemberIds": [
+        "fm-1",
+        "fm-2",
+        "fm-3"
+      ],
+      "createdAt": "2025-06-10T08:00:00.000Z",
+      "updatedAt": "2025-06-10T08:00:00.000Z"
+    },
+    {
+      "id": "list-2",
+      "userId": "user-demo-1",
+      "shareId": "gory2025",
+      "name": "Weekend w górach",
+      "sharePermission": "readonly",
+      "selectedMemberIds": [
+        "fm-1",
+        "fm-2"
+      ],
+      "createdAt": "2025-06-12T14:00:00.000Z",
+      "updatedAt": "2025-06-12T14:00:00.000Z"
+    },
+    {
+      "id": "YO7dkd-J6Wc2iwnXQBJqU",
+      "userId": "user-demo-1",
+      "shareId": "JrXDxwtO1n",
+      "name": "Turcja",
+      "sharePermission": "checkoff",
+      "selectedMemberIds": [
+        "fm-1",
+        "fm-2",
+        "fm-3"
+      ],
+      "createdAt": "2026-06-16T17:23:31.488Z",
+      "updatedAt": "2026-06-16T17:23:31.505Z"
+    }
+  ],
+  "listItems": [
+    {
+      "id": "li-1",
+      "listId": "list-1",
+      "category": "Ubrania",
+      "name": "Koszulka",
+      "quantity": 3,
+      "packed": true,
+      "familyMemberId": "fm-1"
+    },
+    {
+      "id": "li-2",
+      "listId": "list-1",
+      "category": "Ubrania",
+      "name": "Spodenki",
+      "quantity": 2,
+      "packed": true,
+      "familyMemberId": "fm-1"
+    },
+    {
+      "id": "li-3",
+      "listId": "list-1",
+      "category": "Higiena",
+      "name": "Szczoteczka do zębów",
+      "quantity": 1,
+      "packed": false,
+      "familyMemberId": "fm-1"
+    },
+    {
+      "id": "li-4",
+      "listId": "list-1",
+      "category": "Higiena",
+      "name": "Krem z filtrem",
+      "quantity": 1,
+      "packed": false,
+      "familyMemberId": "fm-1"
+    },
+    {
+      "id": "li-5",
+      "listId": "list-1",
+      "category": "Ubrania",
+      "name": "Koszulka",
+      "quantity": 4,
+      "packed": false,
+      "familyMemberId": "fm-2"
+    },
+    {
+      "id": "li-6",
+      "listId": "list-1",
+      "category": "Ubrania",
+      "name": "Spodenki",
+      "quantity": 3,
+      "packed": false,
+      "familyMemberId": "fm-2"
+    },
+    {
+      "id": "li-7",
+      "listId": "list-1",
+      "category": "Elektronika",
+      "name": "Ładowarka telefonu",
+      "quantity": 1,
+      "packed": true,
+      "familyMemberId": "fm-2"
+    },
+    {
+      "id": "li-8",
+      "listId": "list-1",
+      "category": "Ubrania",
+      "name": "Body",
+      "quantity": 5,
+      "packed": false,
+      "familyMemberId": "fm-3"
+    },
+    {
+      "id": "li-9",
+      "listId": "list-1",
+      "category": "Apteczka",
+      "name": "Pieluchy",
+      "quantity": 20,
+      "packed": false,
+      "familyMemberId": "fm-3"
+    },
+    {
+      "id": "li-10",
+      "listId": "list-1",
+      "category": "Higiena",
+      "name": "Chusteczki nawilżane",
+      "quantity": 2,
+      "packed": false,
+      "familyMemberId": "fm-3"
+    },
+    {
+      "id": "li-11",
+      "listId": "list-1",
+      "category": "Dokumenty",
+      "name": "Dowody osobiste",
+      "quantity": 3,
+      "packed": false,
+      "familyMemberId": null
+    },
+    {
+      "id": "li-12",
+      "listId": "list-1",
+      "category": "Elektronika",
+      "name": "Powerbank",
+      "quantity": 1,
+      "packed": false,
+      "familyMemberId": null
+    },
+    {
+      "id": "li-13",
+      "listId": "list-2",
+      "category": "Ubrania",
+      "name": "Koszulka",
+      "quantity": 3,
+      "packed": false,
+      "familyMemberId": "fm-1"
+    },
+    {
+      "id": "li-14",
+      "listId": "list-2",
+      "category": "Ubrania",
+      "name": "Spodenki",
+      "quantity": 2,
+      "packed": false,
+      "familyMemberId": "fm-1"
+    },
+    {
+      "id": "li-15",
+      "listId": "list-2",
+      "category": "Ubrania",
+      "name": "Koszulka",
+      "quantity": 4,
+      "packed": false,
+      "familyMemberId": "fm-2"
+    },
+    {
+      "id": "li-16",
+      "listId": "list-2",
+      "category": "Ubrania",
+      "name": "Kurtka",
+      "quantity": 2,
+      "packed": false,
+      "familyMemberId": null
+    },
+    {
+      "id": "li-17",
+      "listId": "list-2",
+      "category": "Apteczka",
+      "name": "Plastry",
+      "quantity": 1,
+      "packed": true,
+      "familyMemberId": null
+    },
+    {
+      "id": "li-18",
+      "listId": "list-2",
+      "category": "Elektronika",
+      "name": "Latarka",
+      "quantity": 1,
+      "packed": false,
+      "familyMemberId": null
+    },
+    {
+      "id": "XbUXniAZKlPU6O6OpMCez",
+      "listId": "YO7dkd-J6Wc2iwnXQBJqU",
+      "category": "Ubrania",
+      "name": "Koszulka",
+      "quantity": 3,
+      "packed": false,
+      "familyMemberId": "fm-1"
+    },
+    {
+      "id": "rTtnXtzGKwAR4nEZzjzL9",
+      "listId": "YO7dkd-J6Wc2iwnXQBJqU",
+      "category": "Ubrania",
+      "name": "Spodenki",
+      "quantity": 2,
+      "packed": false,
+      "familyMemberId": "fm-1"
+    },
+    {
+      "id": "JUe8YlbHtuuYxsy7dgo8b",
+      "listId": "YO7dkd-J6Wc2iwnXQBJqU",
+      "category": "Higiena",
+      "name": "Szczoteczka do zębów",
+      "quantity": 2,
+      "packed": false,
+      "familyMemberId": "fm-1"
+    },
+    {
+      "id": "5NU7xxV9tGhILPwt7WTnO",
+      "listId": "YO7dkd-J6Wc2iwnXQBJqU",
+      "category": "Higiena",
+      "name": "Krem z filtrem",
+      "quantity": 1,
+      "packed": false,
+      "familyMemberId": "fm-1"
+    },
+    {
+      "id": "8EWcfkO_RPrKikxcybvVT",
+      "listId": "YO7dkd-J6Wc2iwnXQBJqU",
+      "category": "Ubrania",
+      "name": "Koszulka",
+      "quantity": 4,
+      "packed": false,
+      "familyMemberId": "fm-2"
+    },
+    {
+      "id": "TQW31g0OwRgvtHbXJHW6X",
+      "listId": "YO7dkd-J6Wc2iwnXQBJqU",
+      "category": "Ubrania",
+      "name": "Spodenki",
+      "quantity": 3,
+      "packed": false,
+      "familyMemberId": "fm-2"
+    },
+    {
+      "id": "klFohpq6vpYIVLe83zvFt",
+      "listId": "YO7dkd-J6Wc2iwnXQBJqU",
+      "category": "Elektronika",
+      "name": "Ładowarka telefonu",
+      "quantity": 1,
+      "packed": false,
+      "familyMemberId": "fm-2"
+    },
+    {
+      "id": "o05kZirFcGlmU3mdeRX-y",
+      "listId": "YO7dkd-J6Wc2iwnXQBJqU",
+      "category": "Ubrania",
+      "name": "Body",
+      "quantity": 5,
+      "packed": false,
+      "familyMemberId": "fm-3"
+    },
+    {
+      "id": "YojaVesSvNkZCB5k-q6NP",
+      "listId": "YO7dkd-J6Wc2iwnXQBJqU",
+      "category": "Apteczka",
+      "name": "Pieluchy",
+      "quantity": 20,
+      "packed": false,
+      "familyMemberId": "fm-3"
+    },
+    {
+      "id": "0FSFnSqdtXrfqORI4jj7T",
+      "listId": "YO7dkd-J6Wc2iwnXQBJqU",
+      "category": "Higiena",
+      "name": "Chusteczki nawilżane",
+      "quantity": 2,
+      "packed": false,
+      "familyMemberId": "fm-3"
+    }
+  ]
+}

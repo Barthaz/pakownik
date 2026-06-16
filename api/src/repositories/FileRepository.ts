@@ -1,0 +1,225 @@
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import type {
+  DataStore,
+  FamilyMember,
+  FamilyMemberItem,
+  ListItem,
+  PackingList,
+  User,
+} from '../models/types.js';
+import type { IRepository } from './interfaces/IRepository.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const DATA_PATH = path.resolve(__dirname, '../../data/data.json');
+const TEMP_PATH = path.resolve(__dirname, '../../data/data.json.tmp');
+
+let writeQueue: Promise<void> = Promise.resolve();
+
+export class FileRepository implements IRepository {
+  async read(): Promise<DataStore> {
+    const raw = await fs.readFile(DATA_PATH, 'utf-8');
+    return JSON.parse(raw) as DataStore;
+  }
+
+  async write(data: DataStore): Promise<void> {
+    writeQueue = writeQueue.then(async () => {
+      await fs.writeFile(TEMP_PATH, JSON.stringify(data, null, 2), 'utf-8');
+      await fs.rename(TEMP_PATH, DATA_PATH);
+    });
+    await writeQueue;
+  }
+
+  private async mutate(mutator: (data: DataStore) => void): Promise<DataStore> {
+    const data = await this.read();
+    mutator(data);
+    await this.write(data);
+    return data;
+  }
+
+  async findUserByEmail(email: string): Promise<User | undefined> {
+    const data = await this.read();
+    return data.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+  }
+
+  async findUserById(id: string): Promise<User | undefined> {
+    const data = await this.read();
+    return data.users.find((u) => u.id === id);
+  }
+
+  async createUser(user: User): Promise<User> {
+    await this.mutate((data) => {
+      data.users.push(user);
+    });
+    return user;
+  }
+
+  async getFamilyMembers(userId: string): Promise<FamilyMember[]> {
+    const data = await this.read();
+    return data.familyMembers.filter((m) => m.userId === userId);
+  }
+
+  async getFamilyMemberById(id: string, userId: string): Promise<FamilyMember | undefined> {
+    const data = await this.read();
+    return data.familyMembers.find((m) => m.id === id && m.userId === userId);
+  }
+
+  async createFamilyMember(member: FamilyMember): Promise<FamilyMember> {
+    await this.mutate((data) => {
+      data.familyMembers.push(member);
+    });
+    return member;
+  }
+
+  async updateFamilyMember(member: FamilyMember): Promise<FamilyMember> {
+    await this.mutate((data) => {
+      const idx = data.familyMembers.findIndex((m) => m.id === member.id);
+      if (idx >= 0) data.familyMembers[idx] = member;
+    });
+    return member;
+  }
+
+  async deleteFamilyMember(id: string, userId: string): Promise<boolean> {
+    let deleted = false;
+    await this.mutate((data) => {
+      const idx = data.familyMembers.findIndex((m) => m.id === id && m.userId === userId);
+      if (idx < 0) return;
+      data.familyMembers.splice(idx, 1);
+      const itemIds = data.familyMemberItems
+        .filter((i) => i.familyMemberId === id)
+        .map((i) => i.id);
+      data.familyMemberItems = data.familyMemberItems.filter((i) => i.familyMemberId !== id);
+      data.listItems = data.listItems.filter((i) => !itemIds.includes(i.id) && i.familyMemberId !== id);
+      deleted = true;
+    });
+    return deleted;
+  }
+
+  async getFamilyMemberItems(familyMemberId: string, userId: string): Promise<FamilyMemberItem[]> {
+    const member = await this.getFamilyMemberById(familyMemberId, userId);
+    if (!member) return [];
+    const data = await this.read();
+    return data.familyMemberItems.filter((i) => i.familyMemberId === familyMemberId);
+  }
+
+  async getFamilyMemberItemById(id: string, userId: string): Promise<FamilyMemberItem | undefined> {
+    const data = await this.read();
+    const item = data.familyMemberItems.find((i) => i.id === id);
+    if (!item) return undefined;
+    const member = data.familyMembers.find((m) => m.id === item.familyMemberId && m.userId === userId);
+    return member ? item : undefined;
+  }
+
+  async createFamilyMemberItem(item: FamilyMemberItem, userId: string): Promise<FamilyMemberItem> {
+    const member = await this.getFamilyMemberById(item.familyMemberId, userId);
+    if (!member) throw new Error('Family member not found');
+    await this.mutate((data) => {
+      data.familyMemberItems.push(item);
+    });
+    return item;
+  }
+
+  async updateFamilyMemberItem(item: FamilyMemberItem, userId: string): Promise<FamilyMemberItem> {
+    const existing = await this.getFamilyMemberItemById(item.id, userId);
+    if (!existing) throw new Error('Item not found');
+    await this.mutate((data) => {
+      const idx = data.familyMemberItems.findIndex((i) => i.id === item.id);
+      if (idx >= 0) data.familyMemberItems[idx] = item;
+    });
+    return item;
+  }
+
+  async deleteFamilyMemberItem(id: string, userId: string): Promise<boolean> {
+    const existing = await this.getFamilyMemberItemById(id, userId);
+    if (!existing) return false;
+    await this.mutate((data) => {
+      data.familyMemberItems = data.familyMemberItems.filter((i) => i.id !== id);
+    });
+    return true;
+  }
+
+  async getPackingLists(userId: string): Promise<PackingList[]> {
+    const data = await this.read();
+    return data.packingLists.filter((l) => l.userId === userId);
+  }
+
+  async getPackingListById(id: string, userId: string): Promise<PackingList | undefined> {
+    const data = await this.read();
+    return data.packingLists.find((l) => l.id === id && l.userId === userId);
+  }
+
+  async getPackingListByShareId(shareId: string): Promise<PackingList | undefined> {
+    const data = await this.read();
+    return data.packingLists.find((l) => l.shareId === shareId);
+  }
+
+  async createPackingList(list: PackingList): Promise<PackingList> {
+    await this.mutate((data) => {
+      data.packingLists.push(list);
+    });
+    return list;
+  }
+
+  async updatePackingList(list: PackingList): Promise<PackingList> {
+    await this.mutate((data) => {
+      const idx = data.packingLists.findIndex((l) => l.id === list.id);
+      if (idx >= 0) data.packingLists[idx] = list;
+    });
+    return list;
+  }
+
+  async deletePackingList(id: string, userId: string): Promise<boolean> {
+    let deleted = false;
+    await this.mutate((data) => {
+      const idx = data.packingLists.findIndex((l) => l.id === id && l.userId === userId);
+      if (idx < 0) return;
+      data.packingLists.splice(idx, 1);
+      data.listItems = data.listItems.filter((i) => i.listId !== id);
+      deleted = true;
+    });
+    return deleted;
+  }
+
+  async getListItems(listId: string): Promise<ListItem[]> {
+    const data = await this.read();
+    return data.listItems.filter((i) => i.listId === listId);
+  }
+
+  async getListItemById(id: string, listId: string): Promise<ListItem | undefined> {
+    const data = await this.read();
+    return data.listItems.find((i) => i.id === id && i.listId === listId);
+  }
+
+  async createListItem(item: ListItem): Promise<ListItem> {
+    await this.mutate((data) => {
+      data.listItems.push(item);
+    });
+    return item;
+  }
+
+  async updateListItem(item: ListItem): Promise<ListItem> {
+    await this.mutate((data) => {
+      const idx = data.listItems.findIndex((i) => i.id === item.id);
+      if (idx >= 0) data.listItems[idx] = item;
+    });
+    return item;
+  }
+
+  async deleteListItem(id: string, listId: string): Promise<boolean> {
+    let deleted = false;
+    await this.mutate((data) => {
+      const idx = data.listItems.findIndex((i) => i.id === id && i.listId === listId);
+      if (idx < 0) return;
+      data.listItems.splice(idx, 1);
+      deleted = true;
+    });
+    return deleted;
+  }
+
+  async deleteListItemsByListId(listId: string): Promise<void> {
+    await this.mutate((data) => {
+      data.listItems = data.listItems.filter((i) => i.listId !== listId);
+    });
+  }
+}
