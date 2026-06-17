@@ -11,9 +11,18 @@ interface PackingListItemsProps {
   onToggle: (id: string) => void;
   onUpdate: (id: string, data: { name?: string; quantity?: number }) => void;
   onDelete?: (id: string) => void;
+  canCheck?: boolean;
+  canEdit?: boolean;
 }
 
-export function PackingListItems({ items, onToggle, onUpdate, onDelete }: PackingListItemsProps) {
+export function PackingListItems({
+  items,
+  onToggle,
+  onUpdate,
+  onDelete,
+  canCheck = true,
+  canEdit = true,
+}: PackingListItemsProps) {
   const grouped = groupByCategory(items);
   const sections = Object.keys(grouped)
     .sort()
@@ -38,21 +47,24 @@ export function PackingListItems({ items, onToggle, onUpdate, onDelete }: Packin
       renderItem={({ item }) => (
         <View style={[styles.row, item.packed && styles.rowPacked]}>
           <TouchableOpacity
-            style={[styles.check, item.packed && styles.checkOn]}
-            onPress={() => onToggle(item.id)}
+            style={[styles.check, item.packed && styles.checkOn, !canCheck && styles.checkDisabled]}
+            onPress={() => canCheck && onToggle(item.id)}
+            disabled={!canCheck}
           >
             {item.packed && <FontAwesomeIcon icon={faCheck} size={12} color={colors.white} />}
           </TouchableOpacity>
           <InlineName
             value={item.name}
             packed={item.packed}
-            onSave={(name) => onUpdate(item.id, { name })}
+            onSave={(name) => canEdit && onUpdate(item.id, { name })}
+            editable={canEdit}
           />
           <QuantityStepper
             quantity={item.quantity}
-            onChange={(quantity) => onUpdate(item.id, { quantity })}
+            onChange={(quantity) => canEdit && onUpdate(item.id, { quantity })}
+            disabled={!canEdit}
           />
-          {onDelete && (
+          {onDelete && canEdit && (
             <TouchableOpacity onPress={() => onDelete(item.id)} hitSlop={8}>
               <FontAwesomeIcon icon={faTrash} size={16} color={colors.muted} />
             </TouchableOpacity>
@@ -113,5 +125,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkOn: { backgroundColor: colors.coral, borderColor: colors.coral },
+  checkDisabled: { opacity: 0.5 },
   sep: { height: spacing.sm },
 });

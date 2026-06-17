@@ -2,9 +2,9 @@ export const pl = {
   appName: 'Pakownik',
   tagline: 'Więcej czasu na radość, mniej na stres',
   landing: {
-    heroTitle: 'Pakuj raz — i już nigdy niczego nie zapomnisz',
+    heroTitle: 'Pakownik — lista pakowania na wyjazd dla całej rodziny',
     heroSubtitle:
-      'Koniec z wymyślaniem od zera, co zabrać na każdy wyjazd. Przygotuj listę rzeczy dla każdego członka rodziny tylko raz — a potem wystarczy jedno kliknięcie, by mieć gotową listę pakowania.',
+      'Koniec z wymyślaniem od zera, co zabrać na wakacje, city break czy wyjazd z dziećmi. Przygotuj listę rzeczy do spakowania dla każdego członka rodziny tylko raz — potem wystarczy jedno kliknięcie, by mieć gotową checklistę pakowania walizki.',
     heroNote: 'Wypróbuj za darmo · Gotowe w minutę',
     ctaGuest: 'Wypróbuj za darmo',
     ctaRegister: 'Załóż konto',
@@ -71,7 +71,7 @@ export const pl = {
         'Każdy członek rodziny ma swoje rzeczy. Wybierasz osoby na wyjazd — ich lista trafia na Twoją automatycznie.',
       share: 'Pakujcie razem',
       shareDesc:
-        'Wyślij link partnerowi. Wspólnie odhaczacie postęp — bez pytań „czy już spakowałeś pampersy?".',
+        'Podaj adres e-mail partnera — lista pojawi się u niego w aplikacji. Wspólnie odhaczacie postęp — bez pytań „czy już spakowałeś pampersy?".',
     },
     tiers: {
       title: 'Za darmo na start — więcej z kontem',
@@ -91,7 +91,7 @@ export const pl = {
           'Wiele list na różne wyjazdy',
           'Profile członków rodziny',
           'Auto-uzupełnianie list z profili',
-          'Udostępnianie — pakujcie się razem',
+          'Udostępnianie list po e-mailu — pakujcie się razem',
         ],
       },
     },
@@ -99,6 +99,52 @@ export const pl = {
       title: 'Następny wyjazd może być spokojniejszy',
       subtitle:
         'Wypróbuj za darmo albo załóż konto — profile rodziny, wiele list i udostępnianie czekają na Ciebie.',
+    },
+    faq: {
+      title: 'Najczęstsze pytania o pakowanie i listy wyjazdowe',
+      items: [
+        {
+          question: 'Czym jest Pakownik i jak pomaga w pakowaniu walizki?',
+          answer:
+            'Pakownik to darmowa aplikacja do tworzenia list pakowania na wyjazd. Zamiast pisać listę od zera przed każdymi wakacjami, zapisujesz rzeczy dla każdego członka rodziny i szybko generujesz gotową checklistę do spakowania.',
+        },
+        {
+          question: 'Jak przygotować się do wyjazdu bez stresu?',
+          answer:
+            'Ustal wcześniej, co zwykle pakujesz — ubrania, kosmetyki, dokumenty, elektronikę. W Pakowniku dodajesz te pozycje do profili rodziny, a przed wyjazdem wybierasz osoby, które jadą. Aplikacja uzupełnia listę, a Ty odhaczasz postęp pakowania.',
+        },
+        {
+          question: 'Czy Pakownik nadaje się do pakowania z dziećmi?',
+          answer:
+            'Tak. Możesz stworzyć profil dla każdego dziecka z jego rzeczami — pieluchy, ubranka, zabawki, leki. Przy rodzinnym wyjeździe wszystko trafia na jedną listę pakowania, podzieloną na kategorie i ilości.',
+        },
+        {
+          question: 'Czy lista pakowania jest darmowa?',
+          answer:
+            'Tak — w trybie gościa tworzysz jedną listę pakowania za darmo, bez rejestracji. Konto daje wiele list, profile rodziny, auto-uzupełnianie i udostępnianie list po e-mailu, gdy pakujecie się wspólnie.',
+        },
+        {
+          question: 'Czy mogę udostępnić listę pakowania partnerowi?',
+          answer:
+            'Po założeniu konta udostępnisz listę partnerowi, podając jego adres e-mail. Gdy się zaloguje lub założy konto, zobaczy listę u siebie i będzie mógł odhaczać spakowane rzeczy — bez pytań „czy już spakowałeś walizkę?".',
+        },
+        {
+          question: 'Na jakie wyjazdy sprawdzi się checklista pakowania?',
+          answer:
+            'Na wakacje nad morze, w góry, city break, wyjazd służbowy, camping czy weekend u dziadków. Jedna aplikacja do szykowania się na wyjazd — zamiast kartki, notatek w telefonie czy chaosu w głowie.',
+        },
+      ],
+    },
+    seo: {
+      guestTitle: 'Darmowa lista pakowania online',
+      guestDescription:
+        'Stwórz darmową listę pakowania na wyjazd w przeglądarce. Kategorie, ilości i postęp pakowania walizki — bez rejestracji, gotowe w minutę.',
+      loginTitle: 'Logowanie',
+      loginDescription:
+        'Zaloguj się do Pakownika — aplikacji do list pakowania, profili rodziny i wspólnego pakowania na wyjazd.',
+      registerTitle: 'Załóż konto',
+      registerDescription:
+        'Załóż darmowe konto w Pakowniku. Wiele list pakowania, profile członków rodziny i udostępnianie list po e-mailu.',
     },
   },
   auth: {
@@ -108,12 +154,16 @@ export const pl = {
     password: 'Hasło',
     confirmPassword: 'Powtórz hasło',
     passwordMismatch: 'Hasła nie są identyczne',
+    invalidCredentials: 'Nieprawidłowy e-mail lub hasło',
+    emailExists: 'Konto z tym adresem e-mail już istnieje',
+    invalidEmail: 'Podaj poprawny adres e-mail',
+    termsRequired: 'Zaakceptuj regulamin, aby kontynuować',
     noAccount: 'Nie masz konta?',
     hasAccount: 'Masz już konto?',
     logout: 'Wyloguj',
   },
   guest: {
-    banner: 'Załóż konto, aby odblokować wiele list, członków rodziny i udostępnianie.',
+    banner: 'Załóż konto, aby odblokować wiele list, członków rodziny i udostępnianie list po e-mailu.',
     listName: 'Moja lista pakowania',
   },
   lists: {
@@ -123,8 +173,15 @@ export const pl = {
     delete: 'Usuń listę',
     deleteConfirm: 'Czy na pewno chcesz usunąć tę listę?',
     share: 'Udostępnij',
-    shareLink: 'Link do udostępnienia',
-    sharePermission: 'Uprawnienia udostępnienia',
+    shareEmail: 'Adres e-mail odbiorcy',
+    shareEmailPlaceholder: 'np. partner@example.com',
+    sharePermission: 'Uprawnienia',
+    shareAdd: 'Udostępnij',
+    shareRevoke: 'Cofnij dostęp',
+    shareList: 'Udostępnione dla',
+    sharedBadge: 'Udostępniona',
+    sharedFrom: 'Od',
+    sharedReadonly: 'Ta lista jest tylko do odczytu.',
     addItem: 'Dodaj pozycję',
     addMembers: 'Dodaj członków rodziny',
     progress: 'Postęp pakowania',
@@ -149,10 +206,13 @@ export const pl = {
     delete: 'Usuń',
     confirm: 'Potwierdź',
   },
-  shared: {
-    readonly: 'Ta lista jest tylko do odczytu.',
-    title: 'Udostępniona lista',
-    notFound: 'Lista nie została znaleziona.',
+  legal: {
+    acceptTerms: 'Akceptuję',
+    and: 'oraz',
+    terms: 'Regulamin',
+    privacy: 'Politykę prywatności',
+    rodo: 'Klauzulę informacyjną RODO',
+    termsRequired: 'Zaakceptuj regulamin, aby kontynuować',
   },
   common: {
     loading: 'Ładowanie...',

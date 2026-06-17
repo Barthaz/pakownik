@@ -1,12 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { User } from '@/models/types';
 import { authService } from '@/services/authService';
+import { setUnauthorizedHandler } from '@/services/apiClient';
 
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, acceptTerms: boolean) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -17,10 +18,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setUnauthorizedHandler(() => setUser(null));
+    return () => setUnauthorizedHandler(null);
+  }, []);
+
+  useEffect(() => {
     authService
       .me()
       .then(setUser)
-      .catch(() => authService.clearToken())
+      .catch(() => {
+        setUser(null);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -30,8 +38,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(u);
   }, []);
 
-  const register = useCallback(async (email: string, password: string) => {
-    const { user: u, token } = await authService.register(email, password);
+  const register = useCallback(async (email: string, password: string, acceptTerms: boolean) => {
+    const { user: u, token } = await authService.register(email, password, acceptTerms);
     await authService.saveToken(token);
     setUser(u);
   }, []);

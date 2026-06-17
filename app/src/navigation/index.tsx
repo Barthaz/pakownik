@@ -89,7 +89,7 @@ export function MainNavigator() {
 
 export function RootNavigation({ isAuthenticated }: { isAuthenticated: boolean }) {
   return (
-    <NavigationContainer>
+    <NavigationContainer key={isAuthenticated ? 'main' : 'auth'}>
       {isAuthenticated ? <MainNavigator /> : <AuthNavigator />}
     </NavigationContainer>
   );

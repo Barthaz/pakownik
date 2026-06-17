@@ -7,8 +7,8 @@ interface AuthResponse {
 }
 
 export const authService = {
-  register(email: string, password: string) {
-    return apiClient.post<AuthResponse>('/api/auth/register', { email, password });
+  register(email: string, password: string, acceptTerms: boolean) {
+    return apiClient.post<AuthResponse>('/api/auth/register', { email, password, acceptTerms });
   },
 
   login(email: string, password: string) {

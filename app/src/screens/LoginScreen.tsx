@@ -8,6 +8,7 @@ import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { AppNameLogo } from '@/components/AppNameLogo';
 import { pl } from '@/models/pl';
+import { isValidEmail, mapAuthError } from '@/utils/authErrors';
 import { colors, fonts, radius, shadows, spacing } from '@/theme';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
@@ -16,14 +17,31 @@ export function LoginScreen({ navigation }: Props) {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
+    setEmailError('');
+    setPasswordError('');
+
+    if (!isValidEmail(email)) {
+      setEmailError(pl.auth.invalidEmail);
+      return;
+    }
+    if (!password) {
+      setPasswordError(pl.auth.invalidCredentials);
+      return;
+    }
+
     setLoading(true);
     try {
       await login(email, password);
     } catch (e) {
-      Alert.alert(pl.common.error, (e as Error).message);
+      const mapped = mapAuthError((e as Error).message);
+      if (mapped.emailError) setEmailError(mapped.emailError);
+      if (mapped.passwordError) setPasswordError(mapped.passwordError);
+      if (mapped.general) Alert.alert(pl.common.error, mapped.general);
     } finally {
       setLoading(false);
     }
@@ -32,7 +50,7 @@ export function LoginScreen({ navigation }: Props) {
   return (
     <Screen>
       <View style={styles.top}>
-        <AppNameLogo />
+        <AppNameLogo align="center" />
         <Text style={styles.title}>{pl.auth.login}</Text>
       </View>
 
@@ -41,17 +59,25 @@ export function LoginScreen({ navigation }: Props) {
           <Input
             label={pl.auth.email}
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(value) => {
+              setEmail(value);
+              if (emailError) setEmailError('');
+            }}
             autoCapitalize="none"
             keyboardType="email-address"
             autoComplete="email"
+            error={emailError}
           />
           <Input
             label={pl.auth.password}
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(value) => {
+              setPassword(value);
+              if (passwordError) setPasswordError('');
+            }}
             secureTextEntry
             autoComplete="password"
+            error={passwordError}
           />
           <Button title={pl.auth.login} onPress={handleLogin} loading={loading} />
         </View>

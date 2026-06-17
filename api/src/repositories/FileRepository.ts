@@ -6,6 +6,7 @@ import type {
   FamilyMember,
   FamilyMemberItem,
   ListItem,
+  ListShare,
   PackingList,
   User,
 } from '../models/types.js';
@@ -20,7 +21,9 @@ let writeQueue: Promise<void> = Promise.resolve();
 export class FileRepository implements IRepository {
   async read(): Promise<DataStore> {
     const raw = await fs.readFile(DATA_PATH, 'utf-8');
-    return JSON.parse(raw) as DataStore;
+    const data = JSON.parse(raw) as DataStore;
+    if (!data.listShares) data.listShares = [];
+    return data;
   }
 
   async write(data: DataStore): Promise<void> {
@@ -149,6 +152,11 @@ export class FileRepository implements IRepository {
     return data.packingLists.find((l) => l.id === id && l.userId === userId);
   }
 
+  async getPackingListByIdOnly(id: string): Promise<PackingList | undefined> {
+    const data = await this.read();
+    return data.packingLists.find((l) => l.id === id);
+  }
+
   async getPackingListByShareId(shareId: string): Promise<PackingList | undefined> {
     const data = await this.read();
     return data.packingLists.find((l) => l.shareId === shareId);
@@ -176,6 +184,7 @@ export class FileRepository implements IRepository {
       if (idx < 0) return;
       data.packingLists.splice(idx, 1);
       data.listItems = data.listItems.filter((i) => i.listId !== id);
+      data.listShares = data.listShares.filter((s) => s.listId !== id);
       deleted = true;
     });
     return deleted;
@@ -220,6 +229,58 @@ export class FileRepository implements IRepository {
   async deleteListItemsByListId(listId: string): Promise<void> {
     await this.mutate((data) => {
       data.listItems = data.listItems.filter((i) => i.listId !== listId);
+    });
+  }
+
+  async getSharesForList(listId: string): Promise<ListShare[]> {
+    const data = await this.read();
+    return data.listShares.filter((s) => s.listId === listId);
+  }
+
+  async getSharesForRecipient(userId: string): Promise<ListShare[]> {
+    const data = await this.read();
+    return data.listShares.filter((s) => s.recipientUserId === userId);
+  }
+
+  async getShareForRecipientAndList(userId: string, listId: string): Promise<ListShare | undefined> {
+    const data = await this.read();
+    return data.listShares.find((s) => s.recipientUserId === userId && s.listId === listId);
+  }
+
+  async getShareById(shareId: string, listId: string): Promise<ListShare | undefined> {
+    const data = await this.read();
+    return data.listShares.find((s) => s.id === shareId && s.listId === listId);
+  }
+
+  async createListShare(share: ListShare): Promise<ListShare> {
+    await this.mutate((data) => {
+      data.listShares.push(share);
+    });
+    return share;
+  }
+
+  async deleteListShare(shareId: string, listId: string): Promise<boolean> {
+    let deleted = false;
+    await this.mutate((data) => {
+      const idx = data.listShares.findIndex((s) => s.id === shareId && s.listId === listId);
+      if (idx < 0) return;
+      data.listShares.splice(idx, 1);
+      deleted = true;
+    });
+    return deleted;
+  }
+
+  async linkSharesByEmail(userId: string, email: string): Promise<void> {
+    const normalized = email.trim().toLowerCase();
+    await this.mutate((data) => {
+      for (const share of data.listShares) {
+        if (
+          share.sharedWithEmail.toLowerCase() === normalized &&
+          share.recipientUserId === null
+        ) {
+          share.recipientUserId = userId;
+        }
+      }
     });
   }
 }

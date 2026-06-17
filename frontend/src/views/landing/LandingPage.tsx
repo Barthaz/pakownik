@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -11,15 +12,25 @@ import {
   faArrowRight,
 } from '@fortawesome/free-solid-svg-icons';
 import { pl } from '@/models/pl';
+import { routes } from '@/models/constants';
 import { Button } from '@/views/ui/Button';
 import { LogoShowcase } from '@/views/ui/LogoShowcase';
 import { Header } from '@/views/layout/Header';
 import { PublicLayout } from '@/views/layout/PublicLayout';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePageMeta } from '@/seo/usePageMeta';
+import { faqSchema, organizationSchema, webApplicationSchema } from '@/seo/schema';
 
 export function LandingPage() {
   const { landing } = pl;
   const { user } = useAuth();
+
+  const jsonLd = useMemo(
+    () => [webApplicationSchema(), organizationSchema(), faqSchema(landing.faq.items)],
+    [landing.faq.items],
+  );
+
+  usePageMeta({ path: '/', jsonLd });
 
   return (
     <PublicLayout header={<Header />}>
@@ -37,15 +48,15 @@ export function LandingPage() {
             <p className="text-sm text-muted/80 mb-8">{landing.heroNote}</p>
             <div className="flex flex-wrap gap-3">
               {user ? (
-                <Link to="/app">
+                <Link to={routes.app}>
                   <Button size="lg">{pl.lists.title}</Button>
                 </Link>
               ) : (
                 <>
-                  <Link to="/guest">
+                  <Link to={routes.guest}>
                     <Button size="lg">{landing.ctaGuest}</Button>
                   </Link>
-                  <Link to="/register">
+                  <Link to={routes.register}>
                     <Button variant="secondary" size="lg">
                       {landing.ctaRegister}
                     </Button>
@@ -204,8 +215,30 @@ export function LandingPage() {
         </div>
       </section>
 
+      {/* FAQ — treść pod SEO i rich results */}
+      <section className="bg-white border-y border-border py-16 sm:py-20" aria-labelledby="faq-heading">
+        <div className="mx-auto max-w-3xl px-4 sm:px-6">
+          <h2 id="faq-heading" className="text-2xl sm:text-3xl font-bold text-navy mb-8 text-center">
+            {landing.faq.title}
+          </h2>
+          <div className="space-y-4">
+            {landing.faq.items.map((item) => (
+              <details
+                key={item.question}
+                className="group rounded-2xl border border-border bg-cream/40 px-5 py-4 open:bg-white open:shadow-sm"
+              >
+                <summary className="cursor-pointer list-none font-heading font-semibold text-navy leading-snug [&::-webkit-details-marker]:hidden">
+                  {item.question}
+                </summary>
+                <p className="mt-3 text-sm text-muted leading-relaxed">{item.answer}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
-      <section className="pb-16 sm:pb-20">
+      <section className="py-16 sm:py-20">
         <div className="mx-auto max-w-3xl px-4 sm:px-6">
           <div className="rounded-3xl bg-gradient-to-br from-navy to-navy-light px-6 py-10 sm:px-10 sm:py-12 text-center text-white">
             <h2 className="text-2xl sm:text-3xl font-bold mb-4">{landing.cta.title}</h2>
@@ -214,7 +247,7 @@ export function LandingPage() {
             </p>
             <div className="flex flex-wrap justify-center gap-3">
               {user ? (
-                <Link to="/app">
+                <Link to={routes.app}>
                   <Button size="lg">
                     {pl.lists.title}
                     <FontAwesomeIcon icon={faArrowRight} className="text-sm" />
@@ -222,13 +255,13 @@ export function LandingPage() {
                 </Link>
               ) : (
                 <>
-                  <Link to="/guest">
+                  <Link to={routes.guest}>
                     <Button size="lg">
                       {landing.ctaGuest}
                       <FontAwesomeIcon icon={faArrowRight} className="text-sm" />
                     </Button>
                   </Link>
-                  <Link to="/register">
+                  <Link to={routes.register}>
                     <Button variant="ghost" size="lg" className="!border-white/30 !text-white hover:!bg-white/10">
                       {landing.ctaRegister}
                     </Button>

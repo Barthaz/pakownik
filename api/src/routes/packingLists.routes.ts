@@ -1,14 +1,19 @@
 import { Router } from 'express';
 import { PackingListController } from '../controllers/packingList.controller.js';
+import { ListShareController } from '../controllers/listShare.controller.js';
 import { authMiddleware } from '../middleware/auth.js';
 
 const router = Router();
 const controller = new PackingListController();
+const shareController = new ListShareController();
 
 router.use(authMiddleware);
 
 router.get('/', (req, res) => controller.getAll(req, res));
 router.post('/', (req, res) => controller.create(req, res));
+router.get('/:id/shares', (req, res) => shareController.getShares(req, res));
+router.post('/:id/shares', (req, res) => shareController.createShare(req, res));
+router.delete('/:id/shares/:shareId', (req, res) => shareController.deleteShare(req, res));
 router.get('/:id', (req, res) => controller.getById(req, res));
 router.put('/:id', (req, res) => controller.update(req, res));
 router.delete('/:id', (req, res) => controller.delete(req, res));

@@ -1,0 +1,25 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "preview": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://pakownik.vercel.app",
+        "EXPO_PUBLIC_WEB_URL": "https://pakownik.vercel.app"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://pakownik.vercel.app",
+        "EXPO_PUBLIC_WEB_URL": "https://pakownik.vercel.app"
+      }
+    }
+  }
+}

@@ -19,16 +19,19 @@ export async function getHealthReport(version: string): Promise<HealthReport> {
   const storage = env.betaMode ? 'file' : 'mysql';
 
   if (env.betaMode) {
+    const onVercel = Boolean(process.env.VERCEL);
     return {
-      status: 'ok',
+      status: onVercel ? 'error' : 'ok',
       version,
       storage,
       mode,
       api: { status: 'ok' },
       database: {
-        status: 'skipped',
+        status: onVercel ? 'error' : 'skipped',
         label: 'Plik JSON (tryb beta)',
-        detail: 'Persystencja lokalna — bez MySQL',
+        detail: onVercel
+          ? 'Na Vercel wymagane BETA_MODE=false i MySQL — zapis do pliku jest niemożliwy (read-only FS)'
+          : 'Persystencja lokalna — bez MySQL',
       },
       checkedAt,
     };

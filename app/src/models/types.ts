@@ -16,6 +16,18 @@ export interface ListItem {
   familyMemberId: string | null;
 }
 
+export type ListOwnership = 'own' | 'shared';
+
+export interface ListShare {
+  id: string;
+  listId: string;
+  sharedWithEmail: string;
+  sharedByUserId: string;
+  recipientUserId: string | null;
+  permission: SharePermission;
+  createdAt: string;
+}
+
 export interface PackingList {
   id: string;
   userId: string;
@@ -26,6 +38,9 @@ export interface PackingList {
   createdAt: string;
   updatedAt: string;
   items?: ListItem[];
+  ownership?: ListOwnership;
+  sharedByEmail?: string;
+  myPermission?: SharePermission;
 }
 
 export interface FamilyMemberItem {

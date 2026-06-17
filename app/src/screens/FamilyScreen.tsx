@@ -18,9 +18,10 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import type { FamilyMember } from '@/models/types';
 import { familyService } from '@/services/familyService';
+import { isSessionExpiredError } from '@/services/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { Screen } from '@/components/Screen';
-import { AppHeader } from '@/components/AppHeader';
+import { AppNameLogo } from '@/components/AppNameLogo';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { AppModal } from '@/components/AppModal';
@@ -40,6 +41,7 @@ export function FamilyScreen() {
     try {
       setMembers(await familyService.getAll());
     } catch (e) {
+      if (isSessionExpiredError(e)) return;
       Alert.alert(pl.common.error, (e as Error).message);
     } finally {
       setLoading(false);
@@ -61,6 +63,7 @@ export function FamilyScreen() {
       setNewName('');
       load();
     } catch (e) {
+      if (isSessionExpiredError(e)) return;
       Alert.alert(pl.common.error, (e as Error).message);
     }
   };
@@ -86,6 +89,7 @@ export function FamilyScreen() {
       setAddItemMemberId(null);
       load();
     } catch (e) {
+      if (isSessionExpiredError(e)) return;
       Alert.alert(pl.common.error, (e as Error).message);
     }
   };
@@ -106,11 +110,15 @@ export function FamilyScreen() {
 
   return (
     <Screen>
-      <AppHeader
-        title={pl.family.title}
-        showLogo
-        rightAction={{ label: pl.auth.logout, onPress: logout }}
-      />
+      <View style={styles.header}>
+        <View style={styles.headerRow}>
+          <AppNameLogo />
+          <TouchableOpacity onPress={logout} hitSlop={8}>
+            <Text style={styles.logout}>{pl.auth.logout}</Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.title}>{pl.family.title}</Text>
+      </View>
 
       <FlatList
         data={members}
@@ -184,6 +192,30 @@ export function FamilyScreen() {
 }
 
 const styles = StyleSheet.create({
+  header: {
+    alignSelf: 'stretch',
+    marginBottom: spacing.md,
+    marginTop: spacing.sm,
+    gap: spacing.sm,
+    paddingBottom: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  logout: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 14,
+    color: colors.muted,
+  },
+  title: {
+    fontFamily: fonts.heading,
+    fontSize: 22,
+    color: colors.navy,
+  },
   addRow: {
     flexDirection: 'row',
     alignItems: 'center',

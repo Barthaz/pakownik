@@ -5,6 +5,7 @@ import type {
   FamilyMember,
   FamilyMemberItem,
   ListItem,
+  ListShare,
   PackingList,
   User,
 } from '../models/types.js';
@@ -19,6 +20,19 @@ function mapUser(row: RowDataPacket): User {
     id: row.id,
     email: row.email,
     passwordHash: row.password_hash,
+    termsAcceptedAt: row.terms_accepted_at ? toIso(row.terms_accepted_at) : null,
+    createdAt: toIso(row.created_at),
+  };
+}
+
+function mapListShare(row: RowDataPacket): ListShare {
+  return {
+    id: row.id,
+    listId: row.list_id,
+    sharedWithEmail: row.shared_with_email,
+    sharedByUserId: row.shared_by_user_id,
+    recipientUserId: row.recipient_user_id ?? null,
+    permission: row.permission,
     createdAt: toIso(row.created_at),
   };
 }
@@ -107,6 +121,7 @@ export class MysqlRepository implements IRepository {
       familyMemberItems: familyMemberItems.map(mapFamilyMemberItem),
       packingLists,
       listItems: listItems.map(mapListItem),
+      listShares: [],
     };
   }
 
@@ -134,11 +149,19 @@ export class MysqlRepository implements IRepository {
 
   async createUser(user: User): Promise<User> {
     const pool = getPool();
-    await pool.execute(
-      'INSERT INTO users (id, email, password_hash, created_at) VALUES (?, ?, ?, ?)',
-      [user.id, user.email, user.passwordHash, user.createdAt],
-    );
-    return user;
+    try {
+      await pool.execute(
+        'INSERT INTO users (id, email, password_hash, terms_accepted_at, created_at) VALUES (?, ?, ?, ?, ?)',
+        [user.id, user.email, user.passwordHash, user.termsAcceptedAt ?? null, user.createdAt],
+      );
+      return user;
+    } catch (err: unknown) {
+      const mysqlErr = err as { code?: string };
+      if (mysqlErr.code === 'ER_DUP_ENTRY') {
+        throw new Error('Użytkownik o tym adresie e-mail już istnieje');
+      }
+      throw err;
+    }
   }
 
   async getFamilyMembers(userId: string): Promise<FamilyMember[]> {
@@ -268,6 +291,15 @@ export class MysqlRepository implements IRepository {
     return rows[0] ? mapPackingList(rows[0]) : undefined;
   }
 
+  async getPackingListByIdOnly(id: string): Promise<PackingList | undefined> {
+    const pool = getPool();
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      'SELECT * FROM packing_lists WHERE id = ? LIMIT 1',
+      [id],
+    );
+    return rows[0] ? mapPackingList(rows[0]) : undefined;
+  }
+
   async getPackingListByShareId(shareId: string): Promise<PackingList | undefined> {
     const pool = getPool();
     const [rows] = await pool.execute<RowDataPacket[]>(
@@ -386,5 +418,79 @@ export class MysqlRepository implements IRepository {
   async deleteListItemsByListId(listId: string): Promise<void> {
     const pool = getPool();
     await pool.execute('DELETE FROM list_items WHERE list_id = ?', [listId]);
+  }
+
+  async getSharesForList(listId: string): Promise<ListShare[]> {
+    const pool = getPool();
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      'SELECT * FROM list_shares WHERE list_id = ? ORDER BY created_at DESC',
+      [listId],
+    );
+    return rows.map(mapListShare);
+  }
+
+  async getSharesForRecipient(userId: string): Promise<ListShare[]> {
+    const pool = getPool();
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      'SELECT * FROM list_shares WHERE recipient_user_id = ? ORDER BY created_at DESC',
+      [userId],
+    );
+    return rows.map(mapListShare);
+  }
+
+  async getShareForRecipientAndList(userId: string, listId: string): Promise<ListShare | undefined> {
+    const pool = getPool();
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      'SELECT * FROM list_shares WHERE recipient_user_id = ? AND list_id = ? LIMIT 1',
+      [userId, listId],
+    );
+    return rows[0] ? mapListShare(rows[0]) : undefined;
+  }
+
+  async getShareById(shareId: string, listId: string): Promise<ListShare | undefined> {
+    const pool = getPool();
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      'SELECT * FROM list_shares WHERE id = ? AND list_id = ? LIMIT 1',
+      [shareId, listId],
+    );
+    return rows[0] ? mapListShare(rows[0]) : undefined;
+  }
+
+  async createListShare(share: ListShare): Promise<ListShare> {
+    const pool = getPool();
+    await pool.execute(
+      `INSERT INTO list_shares
+        (id, list_id, shared_with_email, shared_by_user_id, recipient_user_id, permission, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        share.id,
+        share.listId,
+        share.sharedWithEmail,
+        share.sharedByUserId,
+        share.recipientUserId,
+        share.permission,
+        share.createdAt,
+      ],
+    );
+    return share;
+  }
+
+  async deleteListShare(shareId: string, listId: string): Promise<boolean> {
+    const pool = getPool();
+    const [result] = await pool.execute<ResultSetHeader>(
+      'DELETE FROM list_shares WHERE id = ? AND list_id = ?',
+      [shareId, listId],
+    );
+    return result.affectedRows > 0;
+  }
+
+  async linkSharesByEmail(userId: string, email: string): Promise<void> {
+    const pool = getPool();
+    await pool.execute(
+      `UPDATE list_shares
+       SET recipient_user_id = ?
+       WHERE LOWER(shared_with_email) = LOWER(?) AND recipient_user_id IS NULL`,
+      [userId, email],
+    );
   }
 }

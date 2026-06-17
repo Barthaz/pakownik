@@ -1,25 +1,65 @@
 import { nanoid } from 'nanoid';
 import type { ListItem, PackingList, SharePermission } from '../models/types.js';
 import { getRepository } from '../repositories/index.js';
+import {
+  assertCanCheckOff,
+  assertCanEdit,
+  filterItemUpdate,
+  resolveListAccess,
+} from './listAccess.js';
 
 export class PackingListService {
   private repo = getRepository();
 
   async getAll(userId: string) {
-    const lists = await this.repo.getPackingLists(userId);
-    return Promise.all(
-      lists.map(async (list) => ({
+    const ownedLists = await this.repo.getPackingLists(userId);
+    const ownedWithMeta = await Promise.all(
+      ownedLists.map(async (list) => ({
         ...list,
         items: await this.repo.getListItems(list.id),
+        ownership: 'own' as const,
       })),
     );
+
+    const shares = await this.repo.getSharesForRecipient(userId);
+    const sharedWithMeta = await Promise.all(
+      shares.map(async (share) => {
+        const list = await this.repo.getPackingListByIdOnly(share.listId);
+        if (!list) return null;
+        const owner = await this.repo.findUserById(list.userId);
+        return {
+          ...list,
+          items: await this.repo.getListItems(list.id),
+          ownership: 'shared' as const,
+          sharedByEmail: owner?.email ?? '',
+          myPermission: share.permission,
+        };
+      }),
+    );
+
+    return [
+      ...ownedWithMeta,
+      ...sharedWithMeta.filter((l): l is NonNullable<typeof l> => l !== null),
+    ];
   }
 
   async getById(id: string, userId: string) {
-    const list = await this.repo.getPackingListById(id, userId);
-    if (!list) throw new Error('Lista nie znaleziona');
+    const access = await resolveListAccess(id, userId);
+    if (!access) throw new Error('Lista nie znaleziona');
+
     const items = await this.repo.getListItems(id);
-    return { ...list, items };
+    if (access.ownership === 'own') {
+      return { ...access.list, items, ownership: 'own' as const };
+    }
+
+    const owner = await this.repo.findUserById(access.list.userId);
+    return {
+      ...access.list,
+      items,
+      ownership: 'shared' as const,
+      sharedByEmail: owner?.email ?? '',
+      myPermission: access.permission,
+    };
   }
 
   async create(userId: string, name: string, selectedMemberIds: string[] = []) {
@@ -45,7 +85,7 @@ export class PackingListService {
     }
 
     const items = await this.repo.getListItems(list.id);
-    return { ...list, items };
+    return { ...list, items, ownership: 'own' as const };
   }
 
   async update(
@@ -70,7 +110,7 @@ export class PackingListService {
     list.updatedAt = new Date().toISOString();
     await this.repo.updatePackingList(list);
     const items = await this.repo.getListItems(id);
-    return { ...list, items };
+    return { ...list, items, ownership: 'own' as const };
   }
 
   async delete(id: string, userId: string) {
@@ -92,7 +132,7 @@ export class PackingListService {
 
     await this.repo.updatePackingList(list);
     const items = await this.repo.getListItems(id);
-    return { ...list, items };
+    return { ...list, items, ownership: 'own' as const };
   }
 
   private async mergeFamilyItems(listId: string, userId: string, memberIds: string[]) {
@@ -136,8 +176,9 @@ export class PackingListService {
     userId: string,
     data: { category: string; name: string; quantity: number },
   ) {
-    const list = await this.repo.getPackingListById(listId, userId);
-    if (!list) throw new Error('Lista nie znaleziona');
+    const access = await resolveListAccess(listId, userId);
+    if (!access) throw new Error('Lista nie znaleziona');
+    assertCanEdit(access);
 
     const item: ListItem = {
       id: nanoid(),
@@ -159,24 +200,28 @@ export class PackingListService {
     userId: string,
     data: Partial<Pick<ListItem, 'category' | 'name' | 'quantity' | 'packed'>>,
   ) {
-    const list = await this.repo.getPackingListById(listId, userId);
-    if (!list) throw new Error('Lista nie znaleziona');
+    const access = await resolveListAccess(listId, userId);
+    if (!access) throw new Error('Lista nie znaleziona');
+    assertCanCheckOff(access);
+
+    const filtered = filterItemUpdate(access, data);
 
     const item = await this.repo.getListItemById(itemId, listId);
     if (!item) throw new Error('Pozycja nie znaleziona');
 
-    if (data.category !== undefined) item.category = data.category;
-    if (data.name !== undefined) item.name = data.name;
-    if (data.quantity !== undefined) item.quantity = data.quantity;
-    if (data.packed !== undefined) item.packed = data.packed;
+    if (filtered.category !== undefined) item.category = filtered.category;
+    if (filtered.name !== undefined) item.name = filtered.name;
+    if (filtered.quantity !== undefined) item.quantity = filtered.quantity;
+    if (filtered.packed !== undefined) item.packed = filtered.packed;
 
     await this.repo.updateListItem(item);
     return item;
   }
 
   async deleteItem(listId: string, itemId: string, userId: string) {
-    const list = await this.repo.getPackingListById(listId, userId);
-    if (!list) throw new Error('Lista nie znaleziona');
+    const access = await resolveListAccess(listId, userId);
+    if (!access) throw new Error('Lista nie znaleziona');
+    assertCanEdit(access);
 
     const deleted = await this.repo.deleteListItem(itemId, listId);
     if (!deleted) throw new Error('Pozycja nie znaleziona');

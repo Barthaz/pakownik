@@ -3,6 +3,7 @@ import type {
   FamilyMember,
   FamilyMemberItem,
   ListItem,
+  ListShare,
   PackingList,
   User,
 } from '../../models/types.js';
@@ -29,10 +30,19 @@ export interface IRepository {
 
   getPackingLists(userId: string): Promise<PackingList[]>;
   getPackingListById(id: string, userId: string): Promise<PackingList | undefined>;
+  getPackingListByIdOnly(id: string): Promise<PackingList | undefined>;
   getPackingListByShareId(shareId: string): Promise<PackingList | undefined>;
   createPackingList(list: PackingList): Promise<PackingList>;
   updatePackingList(list: PackingList): Promise<PackingList>;
   deletePackingList(id: string, userId: string): Promise<boolean>;
+
+  getSharesForList(listId: string): Promise<ListShare[]>;
+  getSharesForRecipient(userId: string): Promise<ListShare[]>;
+  getShareForRecipientAndList(userId: string, listId: string): Promise<ListShare | undefined>;
+  getShareById(shareId: string, listId: string): Promise<ListShare | undefined>;
+  createListShare(share: ListShare): Promise<ListShare>;
+  deleteListShare(shareId: string, listId: string): Promise<boolean>;
+  linkSharesByEmail(userId: string, email: string): Promise<void>;
 
   getListItems(listId: string): Promise<ListItem[]>;
   getListItemById(id: string, listId: string): Promise<ListItem | undefined>;

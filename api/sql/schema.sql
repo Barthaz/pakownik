@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
   id VARCHAR(36) PRIMARY KEY,
   email VARCHAR(255) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
+  terms_accepted_at DATETIME NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -58,4 +59,20 @@ CREATE TABLE IF NOT EXISTS list_items (
   FOREIGN KEY (list_id) REFERENCES packing_lists(id) ON DELETE CASCADE,
   FOREIGN KEY (family_member_id) REFERENCES family_members(id) ON DELETE SET NULL,
   INDEX idx_list_items_list (list_id)
+);
+
+CREATE TABLE IF NOT EXISTS list_shares (
+  id VARCHAR(36) PRIMARY KEY,
+  list_id VARCHAR(36) NOT NULL,
+  shared_with_email VARCHAR(255) NOT NULL,
+  shared_by_user_id VARCHAR(36) NOT NULL,
+  recipient_user_id VARCHAR(36) NULL,
+  permission ENUM('readonly', 'checkoff', 'full_edit') NOT NULL DEFAULT 'checkoff',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (list_id) REFERENCES packing_lists(id) ON DELETE CASCADE,
+  FOREIGN KEY (shared_by_user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (recipient_user_id) REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE (list_id, shared_with_email),
+  INDEX idx_list_shares_recipient (recipient_user_id),
+  INDEX idx_list_shares_email (shared_with_email)
 );

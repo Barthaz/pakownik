@@ -3,7 +3,6 @@ import cors from 'cors';
 import authRoutes from './routes/auth.routes.js';
 import packingListsRoutes from './routes/packingLists.routes.js';
 import familyMembersRoutes from './routes/familyMembers.routes.js';
-import sharedRoutes from './routes/shared.routes.js';
 import { getHealthReport } from './services/health.service.js';
 import { renderHealthPage } from './views/healthPage.js';
 import { createRequire } from 'module';
@@ -46,6 +45,5 @@ app.get('/api/health', async (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/packing-lists', packingListsRoutes);
 app.use('/api/family-members', familyMembersRoutes);
-app.use('/api/shared', sharedRoutes);
 
 export default app;

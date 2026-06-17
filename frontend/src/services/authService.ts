@@ -7,8 +7,8 @@ interface AuthResponse {
 }
 
 export const authService = {
-  async register(email: string, password: string): Promise<AuthResponse> {
-    return apiClient.post<AuthResponse>('/api/auth/register', { email, password });
+  async register(email: string, password: string, acceptTerms: boolean): Promise<AuthResponse> {
+    return apiClient.post<AuthResponse>('/api/auth/register', { email, password, acceptTerms });
   },
 
   async login(email: string, password: string): Promise<AuthResponse> {

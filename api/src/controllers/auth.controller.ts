@@ -6,12 +6,12 @@ const authService = new AuthService();
 export class AuthController {
   async register(req: Request, res: Response) {
     try {
-      const { email, password } = req.body;
+      const { email, password, acceptTerms } = req.body;
       if (!email || !password) {
         res.status(400).json({ error: 'E-mail i hasło są wymagane' });
         return;
       }
-      const result = await authService.register(email, password);
+      const result = await authService.register(email, password, acceptTerms === true);
       res.status(201).json(result);
     } catch (err) {
       res.status(400).json({ error: (err as Error).message });

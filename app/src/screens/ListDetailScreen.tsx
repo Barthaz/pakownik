@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
@@ -17,10 +18,11 @@ import {
   faPlus,
   faCircleCheck,
 } from '@fortawesome/free-solid-svg-icons';
-import * as Clipboard from 'expo-clipboard';
-import type { ListsStackParamList, PackingList, SharePermission } from '@/models/types';
+import type { ListsStackParamList, ListShare, PackingList, SharePermission } from '@/models/types';
 import { packingListService } from '@/services/packingListService';
+import { listShareService } from '@/services/listShareService';
 import { familyService } from '@/services/familyService';
+import { isSessionExpiredError } from '@/services/apiClient';
 import { calculateProgress } from '@/models/progress';
 import { Screen } from '@/components/Screen';
 import { ProgressBar } from '@/components/ProgressBar';
@@ -28,6 +30,7 @@ import { PackingListItems } from '@/components/PackingListItems';
 import { AppModal } from '@/components/AppModal';
 import { AddItemForm } from '@/components/AddItemForm';
 import { Button } from '@/components/Button';
+import { Input } from '@/components/Input';
 import { SHARE_PERMISSION_LABELS } from '@/models/constants';
 import { pl } from '@/models/pl';
 import { colors, fonts, radius, shadows, spacing } from '@/theme';
@@ -38,10 +41,14 @@ export function ListDetailScreen({ route, navigation }: Props) {
   const { listId } = route.params;
   const [list, setList] = useState<PackingList | null>(null);
   const [members, setMembers] = useState<{ id: string; name: string }[]>([]);
+  const [shares, setShares] = useState<ListShare[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [shareEmail, setShareEmail] = useState('');
+  const [sharePermission, setSharePermission] = useState<SharePermission>('checkoff');
+  const [sharing, setSharing] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -52,16 +59,37 @@ export function ListDetailScreen({ route, navigation }: Props) {
       setList(listData);
       setMembers(membersData.map((m) => ({ id: m.id, name: m.name })));
     } catch (e) {
+      if (isSessionExpiredError(e)) return;
       Alert.alert(pl.common.error, (e as Error).message);
       navigation.goBack();
     }
   }, [listId, navigation]);
+
+  const loadShares = useCallback(async () => {
+    try {
+      const data = await listShareService.getShares(listId);
+      setShares(data);
+    } catch (e) {
+      if (isSessionExpiredError(e)) return;
+      Alert.alert(pl.common.error, (e as Error).message);
+    }
+  }, [listId]);
 
   useFocusEffect(
     useCallback(() => {
       load();
     }, [load]),
   );
+
+  const isOwner = list?.ownership !== 'shared';
+  const canCheck = isOwner || list?.myPermission !== 'readonly';
+  const canEdit = isOwner || list?.myPermission === 'full_edit';
+  const canAddItems = canEdit;
+
+  const openShareModal = () => {
+    setShowShare(true);
+    void loadShares();
+  };
 
   if (!list) {
     return (
@@ -72,8 +100,6 @@ export function ListDetailScreen({ route, navigation }: Props) {
   }
 
   const progress = calculateProgress(list.items ?? []);
-  const shareBase = process.env.EXPO_PUBLIC_WEB_URL ?? 'http://localhost:5173';
-  const shareUrl = `${shareBase}/share/${list.shareId}`;
   const availableMembers = members.filter((m) => !list.selectedMemberIds.includes(m.id));
 
   const handleToggle = async (itemId: string) => {
@@ -85,6 +111,7 @@ export function ListDetailScreen({ route, navigation }: Props) {
         prev ? { ...prev, items: prev.items?.map((i) => (i.id === itemId ? updated : i)) } : prev,
       );
     } catch (e) {
+      if (isSessionExpiredError(e)) return;
       Alert.alert(pl.common.error, (e as Error).message);
     }
   };
@@ -96,6 +123,7 @@ export function ListDetailScreen({ route, navigation }: Props) {
         prev ? { ...prev, items: prev.items?.map((i) => (i.id === itemId ? updated : i)) } : prev,
       );
     } catch (e) {
+      if (isSessionExpiredError(e)) return;
       Alert.alert(pl.common.error, (e as Error).message);
     }
   };
@@ -122,22 +150,42 @@ export function ListDetailScreen({ route, navigation }: Props) {
       setList((prev) => (prev ? { ...prev, items: [...(prev.items ?? []), item] } : prev));
       setShowAdd(false);
     } catch (e) {
+      if (isSessionExpiredError(e)) return;
       Alert.alert(pl.common.error, (e as Error).message);
     }
   };
 
-  const handleCopyShare = async () => {
-    await Clipboard.setStringAsync(shareUrl);
-    Alert.alert(pl.lists.copied);
-  };
-
-  const handlePermission = async (sharePermission: SharePermission) => {
+  const handleShare = async () => {
+    if (!shareEmail.trim()) return;
+    setSharing(true);
     try {
-      const updated = await packingListService.update(listId, { sharePermission });
-      setList(updated);
+      await listShareService.createShare(listId, {
+        email: shareEmail.trim(),
+        permission: sharePermission,
+      });
+      setShareEmail('');
+      await loadShares();
+      Alert.alert(pl.lists.share, 'Lista udostępniona');
     } catch (e) {
+      if (isSessionExpiredError(e)) return;
       Alert.alert(pl.common.error, (e as Error).message);
+    } finally {
+      setSharing(false);
     }
+  };
+
+  const handleRevokeShare = (shareId: string) => {
+    Alert.alert(pl.lists.shareRevoke, 'Cofnąć dostęp?', [
+      { text: pl.form.cancel, style: 'cancel' },
+      {
+        text: pl.form.delete,
+        style: 'destructive',
+        onPress: async () => {
+          await listShareService.deleteShare(listId, shareId);
+          await loadShares();
+        },
+      },
+    ]);
   };
 
   const handleAddMembers = async () => {
@@ -148,6 +196,7 @@ export function ListDetailScreen({ route, navigation }: Props) {
       setShowMembers(false);
       setSelectedMembers([]);
     } catch (e) {
+      if (isSessionExpiredError(e)) return;
       Alert.alert(pl.common.error, (e as Error).message);
     }
   };
@@ -174,19 +223,31 @@ export function ListDetailScreen({ route, navigation }: Props) {
           <Text style={styles.backText}>{pl.common.back}</Text>
         </TouchableOpacity>
         <View style={styles.topActions}>
-          {availableMembers.length > 0 && (
+          {isOwner && availableMembers.length > 0 && (
             <TouchableOpacity onPress={() => setShowMembers(true)} hitSlop={8}>
               <FontAwesomeIcon icon={faUsers} size={20} color={colors.navy} />
             </TouchableOpacity>
           )}
-          <TouchableOpacity onPress={() => setShowShare(true)} hitSlop={8}>
-            <FontAwesomeIcon icon={faShareNodes} size={20} color={colors.navy} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleDeleteList} hitSlop={8}>
-            <FontAwesomeIcon icon={faTrash} size={18} color={colors.muted} />
-          </TouchableOpacity>
+          {isOwner && (
+            <TouchableOpacity onPress={openShareModal} hitSlop={8}>
+              <FontAwesomeIcon icon={faShareNodes} size={20} color={colors.navy} />
+            </TouchableOpacity>
+          )}
+          {isOwner && (
+            <TouchableOpacity onPress={handleDeleteList} hitSlop={8}>
+              <FontAwesomeIcon icon={faTrash} size={18} color={colors.muted} />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
+
+      {!isOwner && list.sharedByEmail && (
+        <View style={styles.sharedBanner}>
+          <Text style={styles.sharedBannerText}>
+            {pl.lists.sharedBadge} · {pl.lists.sharedFrom} {list.sharedByEmail}
+          </Text>
+        </View>
+      )}
 
       <Text style={styles.title}>{list.name}</Text>
       <ProgressBar progress={progress} />
@@ -196,35 +257,67 @@ export function ListDetailScreen({ route, navigation }: Props) {
         onToggle={handleToggle}
         onUpdate={handleUpdate}
         onDelete={handleDelete}
+        canCheck={canCheck}
+        canEdit={canEdit}
       />
 
-      <TouchableOpacity style={styles.addFab} onPress={() => setShowAdd(true)} activeOpacity={0.9}>
-        <FontAwesomeIcon icon={faPlus} size={24} color={colors.white} />
-      </TouchableOpacity>
+      {canAddItems && (
+        <TouchableOpacity style={styles.addFab} onPress={() => setShowAdd(true)} activeOpacity={0.9}>
+          <FontAwesomeIcon icon={faPlus} size={24} color={colors.white} />
+        </TouchableOpacity>
+      )}
 
       <AppModal visible={showAdd} title={pl.lists.addItem} onClose={() => setShowAdd(false)}>
         <AddItemForm onSubmit={handleAddItem} onCancel={() => setShowAdd(false)} />
       </AppModal>
 
       <AppModal visible={showShare} title={pl.lists.share} onClose={() => setShowShare(false)}>
-        <Text style={styles.shareLabel}>{pl.lists.shareLink}</Text>
-        <Text style={styles.shareUrl} selectable>
-          {shareUrl}
-        </Text>
-        <Button title="Kopiuj link" onPress={handleCopyShare} style={{ marginBottom: spacing.md }} />
+        <Input
+          label={pl.lists.shareEmail}
+          value={shareEmail}
+          onChangeText={setShareEmail}
+          placeholder={pl.lists.shareEmailPlaceholder}
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
         <Text style={styles.shareLabel}>{pl.lists.sharePermission}</Text>
         {(['readonly', 'checkoff', 'full_edit'] as SharePermission[]).map((p) => (
           <TouchableOpacity
             key={p}
-            style={[styles.permRow, list.sharePermission === p && styles.permRowOn]}
-            onPress={() => handlePermission(p)}
+            style={[styles.permRow, sharePermission === p && styles.permRowOn]}
+            onPress={() => setSharePermission(p)}
           >
             <Text style={styles.permText}>{SHARE_PERMISSION_LABELS[p]}</Text>
-            {list.sharePermission === p && (
+            {sharePermission === p && (
               <FontAwesomeIcon icon={faCircleCheck} size={20} color={colors.coral} />
             )}
           </TouchableOpacity>
         ))}
+        <Button
+          title={pl.lists.shareAdd}
+          onPress={handleShare}
+          loading={sharing}
+          style={{ marginTop: spacing.md }}
+        />
+
+        {shares.length > 0 && (
+          <View style={styles.shareList}>
+            <Text style={styles.shareLabel}>{pl.lists.shareList}</Text>
+            <ScrollView style={{ maxHeight: 160 }}>
+              {shares.map((share) => (
+                <View key={share.id} style={styles.shareRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.shareEmail}>{share.sharedWithEmail}</Text>
+                    <Text style={styles.sharePerm}>{SHARE_PERMISSION_LABELS[share.permission]}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => handleRevokeShare(share.id)} hitSlop={8}>
+                    <FontAwesomeIcon icon={faTrash} size={16} color={colors.muted} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
       </AppModal>
 
       <AppModal visible={showMembers} title={pl.lists.addMembers} onClose={() => setShowMembers(false)}>
@@ -271,6 +364,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   topActions: { flexDirection: 'row', gap: spacing.md },
+  sharedBanner: {
+    backgroundColor: 'rgba(232,168,124,0.15)',
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(232,168,124,0.35)',
+    padding: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  sharedBannerText: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: colors.navy,
+  },
   title: {
     fontFamily: fonts.heading,
     fontSize: 24,
@@ -294,17 +400,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.navy,
     marginBottom: spacing.sm,
-  },
-  shareUrl: {
-    backgroundColor: colors.white,
-    padding: spacing.md,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: spacing.md,
-    fontFamily: fonts.body,
-    fontSize: 13,
-    color: colors.muted,
+    marginTop: spacing.md,
   },
   permRow: {
     flexDirection: 'row',
@@ -321,6 +417,33 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     color: colors.navy,
     fontSize: 15,
+  },
+  shareList: {
+    marginTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: spacing.md,
+  },
+  shareRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.sm,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing.sm,
+    backgroundColor: colors.cream,
+  },
+  shareEmail: {
+    fontFamily: fonts.bodyMedium,
+    color: colors.navy,
+    fontSize: 14,
+  },
+  sharePerm: {
+    fontFamily: fonts.body,
+    color: colors.muted,
+    fontSize: 12,
   },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   chip: {

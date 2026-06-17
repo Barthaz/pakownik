@@ -4,8 +4,21 @@ export interface User {
   id: string;
   email: string;
   passwordHash: string;
+  termsAcceptedAt?: string | null;
   createdAt: string;
 }
+
+export interface ListShare {
+  id: string;
+  listId: string;
+  sharedWithEmail: string;
+  sharedByUserId: string;
+  recipientUserId: string | null;
+  permission: SharePermission;
+  createdAt: string;
+}
+
+export type ListOwnership = 'own' | 'shared';
 
 export interface FamilyMember {
   id: string;
@@ -48,6 +61,7 @@ export interface DataStore {
   familyMemberItems: FamilyMemberItem[];
   packingLists: PackingList[];
   listItems: ListItem[];
+  listShares: ListShare[];
 }
 
 export interface JwtPayload {

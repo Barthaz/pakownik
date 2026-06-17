@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlus, faShareNodes, faArrowLeft } from '@fortawesome/free-solid-svg-icons';
+import { faPlus, faShareNodes, faArrowLeft, faTrash } from '@fortawesome/free-solid-svg-icons';
 import { AppLayout } from '@/views/layout/AppLayout';
 import { usePackingListController, useFamilyController } from '@/controllers/useControllers';
 import { pl } from '@/models/pl';
@@ -9,15 +9,17 @@ import { SHARE_PERMISSION_LABELS } from '@/models/constants';
 import { Button } from '@/views/ui/Button';
 import { Select } from '@/views/ui/Select';
 import { Modal } from '@/views/ui/Modal';
+import { Input } from '@/views/ui/Input';
 import { PackingProgressBar } from '@/views/lists/PackingProgress';
 import { ListItemsView } from '@/views/lists/ListItemsView';
 import { AddItemModal } from '@/views/lists/AddItemModal';
 import { useToast } from '@/contexts/ToastContext';
-import type { SharePermission } from '@/models/types';
+import type { ListShare, SharePermission } from '@/models/types';
+import { listShareService } from '@/services/listShareService';
 
 export function ListDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { list, loading, error, progress, togglePacked, addItem, deleteItem, updateItem, updateList, addMembers } =
+  const { list, loading, error, progress, togglePacked, addItem, deleteItem, updateItem, addMembers } =
     usePackingListController(id);
   const { members } = useFamilyController();
   const { showToast } = useToast();
@@ -25,18 +27,56 @@ export function ListDetailPage() {
   const [showShare, setShowShare] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [shares, setShares] = useState<ListShare[]>([]);
+  const [shareEmail, setShareEmail] = useState('');
+  const [sharePermission, setSharePermission] = useState<SharePermission>('checkoff');
+  const [sharing, setSharing] = useState(false);
 
-  const shareUrl = list ? `${window.location.origin}/share/${list.shareId}` : '';
+  const isOwner = list?.ownership !== 'shared';
+  const canCheck = isOwner || list?.myPermission !== 'readonly';
+  const canEdit = isOwner || list?.myPermission === 'full_edit';
+  const canAddItems = canEdit;
 
-  const handleCopyShare = async () => {
-    await navigator.clipboard.writeText(shareUrl);
-    showToast('Link skopiowany', 'success');
+  const loadShares = async () => {
+    if (!list || !isOwner) return;
+    try {
+      const data = await listShareService.getShares(list.id);
+      setShares(data);
+    } catch (err) {
+      showToast((err as Error).message, 'error');
+    }
   };
 
-  const handlePermissionChange = async (permission: SharePermission) => {
+  const openShareModal = () => {
+    setShowShare(true);
+    void loadShares();
+  };
+
+  const handleShare = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!list || !shareEmail.trim()) return;
+    setSharing(true);
     try {
-      await updateList({ sharePermission: permission });
-      showToast('Uprawnienia zaktualizowane', 'success');
+      await listShareService.createShare(list.id, {
+        email: shareEmail.trim(),
+        permission: sharePermission,
+      });
+      showToast('Lista udostępniona', 'success');
+      setShareEmail('');
+      await loadShares();
+    } catch (err) {
+      showToast((err as Error).message, 'error');
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const handleRevokeShare = async (shareId: string) => {
+    if (!list) return;
+    try {
+      await listShareService.deleteShare(list.id, shareId);
+      showToast('Dostęp cofnięty', 'success');
+      await loadShares();
     } catch (err) {
       showToast((err as Error).message, 'error');
     }
@@ -85,22 +125,38 @@ export function ListDetailPage() {
         Wróć
       </Link>
 
+      {!isOwner && list.sharedByEmail && (
+        <div className="mb-4 rounded-xl border border-coral/30 bg-coral/10 px-4 py-2 text-sm text-navy">
+          {pl.lists.sharedBadge} · {pl.lists.sharedFrom} {list.sharedByEmail}
+        </div>
+      )}
+
+      {!canCheck && (
+        <div className="mb-4 rounded-xl border border-border bg-white px-4 py-2 text-sm text-muted">
+          {pl.lists.sharedReadonly}
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h1 className="text-2xl font-bold text-navy">{list.name}</h1>
         <div className="flex flex-wrap gap-2">
-          {availableMembers.length > 0 && (
+          {isOwner && availableMembers.length > 0 && (
             <Button variant="ghost" size="sm" onClick={() => setShowMembers(true)}>
               {pl.lists.addMembers}
             </Button>
           )}
-          <Button variant="ghost" size="sm" onClick={() => setShowShare(true)}>
-            <FontAwesomeIcon icon={faShareNodes} />
-            {pl.lists.share}
-          </Button>
-          <Button size="sm" onClick={() => setShowAdd(true)}>
-            <FontAwesomeIcon icon={faPlus} />
-            {pl.lists.addItem}
-          </Button>
+          {isOwner && (
+            <Button variant="ghost" size="sm" onClick={openShareModal}>
+              <FontAwesomeIcon icon={faShareNodes} />
+              {pl.lists.share}
+            </Button>
+          )}
+          {canAddItems && (
+            <Button size="sm" onClick={() => setShowAdd(true)}>
+              <FontAwesomeIcon icon={faPlus} />
+              {pl.lists.addItem}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -113,37 +169,66 @@ export function ListDetailPage() {
         onToggle={togglePacked}
         onDelete={deleteItem}
         onUpdateItem={updateItem}
-        canCheck
-        canEdit
+        canCheck={canCheck}
+        canEdit={canEdit}
       />
 
-      <AddItemModal open={showAdd} onClose={() => setShowAdd(false)} onSubmit={addItem} />
+      {canAddItems && (
+        <AddItemModal open={showAdd} onClose={() => setShowAdd(false)} onSubmit={addItem} />
+      )}
 
       <Modal open={showShare} onClose={() => setShowShare(false)} title={pl.lists.share}>
-        <div className="space-y-4">
-          <div>
-            <p className="text-sm text-muted mb-2">{pl.lists.shareLink}</p>
-            <div className="flex gap-2">
-              <input
-                readOnly
-                value={shareUrl}
-                className="flex-1 rounded-xl border border-border bg-cream px-3 py-2 text-sm text-navy"
-              />
-              <Button size="sm" onClick={handleCopyShare}>
-                Kopiuj
-              </Button>
-            </div>
-          </div>
+        <form onSubmit={handleShare} className="space-y-4">
+          <Input
+            label={pl.lists.shareEmail}
+            type="email"
+            value={shareEmail}
+            onChange={(e) => setShareEmail(e.target.value)}
+            placeholder={pl.lists.shareEmailPlaceholder}
+            required
+          />
           <Select
             label={pl.lists.sharePermission}
-            value={list.sharePermission}
-            onChange={(e) => handlePermissionChange(e.target.value as SharePermission)}
+            value={sharePermission}
+            onChange={(e) => setSharePermission(e.target.value as SharePermission)}
             options={Object.entries(SHARE_PERMISSION_LABELS).map(([value, label]) => ({
               value,
               label,
             }))}
           />
-        </div>
+          <Button type="submit" disabled={sharing || !shareEmail.trim()}>
+            {sharing ? pl.common.loading : pl.lists.shareAdd}
+          </Button>
+        </form>
+
+        {shares.length > 0 && (
+          <div className="mt-6 border-t border-border pt-4">
+            <p className="text-sm font-medium text-navy mb-3">{pl.lists.shareList}</p>
+            <ul className="space-y-2">
+              {shares.map((share) => (
+                <li
+                  key={share.id}
+                  className="flex items-center justify-between gap-2 rounded-xl border border-border bg-cream px-3 py-2 text-sm"
+                >
+                  <div>
+                    <span className="text-navy">{share.sharedWithEmail}</span>
+                    <span className="text-muted ml-2">
+                      ({SHARE_PERMISSION_LABELS[share.permission]})
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRevokeShare(share.id)}
+                    className="text-muted hover:text-red-500 p-1"
+                    aria-label={pl.lists.shareRevoke}
+                  >
+                    <FontAwesomeIcon icon={faTrash} className="text-sm" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </Modal>
 
       <Modal open={showMembers} onClose={() => setShowMembers(false)} title={pl.lists.addMembers}>

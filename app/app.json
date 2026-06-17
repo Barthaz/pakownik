@@ -32,7 +32,11 @@
       "expo-font"
     ],
     "extra": {
-      "apiUrl": "http://localhost:3001"
-    }
+      "apiUrl": "https://pakownik.vercel.app",
+      "eas": {
+        "projectId": "7a465cfe-d581-4bd5-bc0d-caff7c8a4a94"
+      }
+    },
+    "owner": "barthaz"
   }
 }

@@ -16,6 +16,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import type { ListsStackParamList, PackingList } from '@/models/types';
 import { packingListService } from '@/services/packingListService';
 import { familyService } from '@/services/familyService';
+import { useAuth } from '@/contexts/AuthContext';
+import { isSessionExpiredError } from '@/services/apiClient';
 import { calculateProgress } from '@/models/progress';
 import { Screen } from '@/components/Screen';
 import { AppNameLogo } from '@/components/AppNameLogo';
@@ -28,6 +30,7 @@ import { colors, fonts, radius, shadows, spacing } from '@/theme';
 type Props = NativeStackScreenProps<ListsStackParamList, 'Lists'>;
 
 export function ListsScreen({ navigation }: Props) {
+  const { logout } = useAuth();
   const [lists, setLists] = useState<PackingList[]>([]);
   const [members, setMembers] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,6 +48,7 @@ export function ListsScreen({ navigation }: Props) {
       setLists(listsData);
       setMembers(membersData.map((m) => ({ id: m.id, name: m.name })));
     } catch (e) {
+      if (isSessionExpiredError(e)) return;
       Alert.alert(pl.common.error, (e as Error).message);
     } finally {
       setLoading(false);
@@ -68,6 +72,7 @@ export function ListsScreen({ navigation }: Props) {
       setSelectedMembers([]);
       navigation.navigate('ListDetail', { listId: list.id });
     } catch (e) {
+      if (isSessionExpiredError(e)) return;
       Alert.alert(pl.common.error, (e as Error).message);
     } finally {
       setCreating(false);
@@ -83,7 +88,12 @@ export function ListsScreen({ navigation }: Props) {
   return (
     <Screen>
       <View style={styles.header}>
-        <AppNameLogo />
+        <View style={styles.headerRow}>
+          <AppNameLogo />
+          <TouchableOpacity onPress={logout} hitSlop={8}>
+            <Text style={styles.logout}>{pl.auth.logout}</Text>
+          </TouchableOpacity>
+        </View>
         <Text style={styles.title}>{pl.lists.title}</Text>
       </View>
 
@@ -102,6 +112,7 @@ export function ListsScreen({ navigation }: Props) {
         }
         renderItem={({ item }) => {
           const progress = calculateProgress(item.items ?? []);
+          const isShared = item.ownership === 'shared';
           return (
             <TouchableOpacity
               style={styles.card}
@@ -109,6 +120,11 @@ export function ListsScreen({ navigation }: Props) {
               onPress={() => navigation.navigate('ListDetail', { listId: item.id })}
             >
               <Text style={styles.cardTitle}>{item.name}</Text>
+              {isShared && item.sharedByEmail && (
+                <Text style={styles.sharedMeta}>
+                  {pl.lists.sharedBadge} · {pl.lists.sharedFrom} {item.sharedByEmail}
+                </Text>
+              )}
               <View style={styles.track}>
                 <LinearGradient
                   colors={[colors.sand, colors.coral]}
@@ -171,6 +187,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  logout: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 14,
+    color: colors.muted,
+  },
   title: {
     fontFamily: fonts.heading,
     fontSize: 22,
@@ -188,6 +214,12 @@ const styles = StyleSheet.create({
     fontFamily: fonts.headingSemi,
     fontSize: 17,
     color: colors.navy,
+    marginBottom: spacing.xs,
+  },
+  sharedMeta: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.coral,
     marginBottom: spacing.sm,
   },
   track: {

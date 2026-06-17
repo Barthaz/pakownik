@@ -8,20 +8,25 @@ interface QuantityStepperProps {
   quantity: number;
   onChange: (q: number) => void;
   min?: number;
+  disabled?: boolean;
 }
 
-export function QuantityStepper({ quantity, onChange, min = 1 }: QuantityStepperProps) {
+export function QuantityStepper({ quantity, onChange, min = 1, disabled }: QuantityStepperProps) {
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, disabled && styles.disabled]}>
       <TouchableOpacity
-        style={[styles.btn, quantity <= min && styles.btnDisabled]}
+        style={[styles.btn, (quantity <= min || disabled) && styles.btnDisabled]}
         onPress={() => onChange(Math.max(min, quantity - 1))}
-        disabled={quantity <= min}
+        disabled={quantity <= min || disabled}
       >
         <FontAwesomeIcon icon={faMinus} size={12} color={colors.muted} />
       </TouchableOpacity>
       <Text style={styles.qty}>{quantity}</Text>
-      <TouchableOpacity style={styles.btn} onPress={() => onChange(quantity + 1)}>
+      <TouchableOpacity
+        style={[styles.btn, disabled && styles.btnDisabled]}
+        onPress={() => onChange(quantity + 1)}
+        disabled={disabled}
+      >
         <FontAwesomeIcon icon={faPlus} size={12} color={colors.muted} />
       </TouchableOpacity>
     </View>
@@ -32,9 +37,10 @@ interface InlineNameProps {
   value: string;
   onSave: (v: string) => void;
   packed?: boolean;
+  editable?: boolean;
 }
 
-export function InlineName({ value, onSave, packed }: InlineNameProps) {
+export function InlineName({ value, onSave, packed, editable = true }: InlineNameProps) {
   const [draft, setDraft] = useState(value);
   const [focused, setFocused] = useState(false);
 
@@ -50,19 +56,22 @@ export function InlineName({ value, onSave, packed }: InlineNameProps) {
       value={focused ? draft : value}
       onChangeText={setDraft}
       onFocus={() => {
+        if (!editable) return;
         setDraft(value);
         setFocused(true);
       }}
       onBlur={commit}
       onSubmitEditing={commit}
-      style={[styles.name, packed && styles.packed]}
+      style={[styles.name, packed && styles.packed, !editable && styles.readonly]}
       multiline={false}
+      editable={editable}
     />
   );
 }
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  disabled: { opacity: 0.5 },
   btn: {
     width: 32,
     height: 32,
@@ -89,4 +98,5 @@ const styles = StyleSheet.create({
     margin: 0,
   },
   packed: { textDecorationLine: 'line-through', opacity: 0.6 },
+  readonly: { opacity: 0.85 },
 });

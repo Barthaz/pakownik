@@ -12,6 +12,29 @@ function getDefaultApiUrl(): string {
 
 const API_URL = getDefaultApiUrl();
 
+type UnauthorizedHandler = () => void;
+
+let onUnauthorized: UnauthorizedHandler | null = null;
+
+export function setUnauthorizedHandler(handler: UnauthorizedHandler | null) {
+  onUnauthorized = handler;
+}
+
+export class SessionExpiredError extends Error {
+  constructor() {
+    super('Sesja wygasła');
+    this.name = 'SessionExpiredError';
+  }
+}
+
+export function isSessionExpiredError(error: unknown): boolean {
+  return error instanceof SessionExpiredError;
+}
+
+function isPublicAuthPath(path: string): boolean {
+  return path.startsWith('/api/auth/login') || path.startsWith('/api/auth/register');
+}
+
 class ApiClient {
   async getToken(): Promise<string | null> {
     return SecureStore.getItemAsync(TOKEN_KEY);
@@ -39,7 +62,14 @@ class ApiClient {
     if (res.status === 204) return undefined as T;
 
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error ?? 'Wystąpił błąd');
+    if (!res.ok) {
+      if (res.status === 401 && token && !isPublicAuthPath(path)) {
+        await this.clearToken();
+        onUnauthorized?.();
+        throw new SessionExpiredError();
+      }
+      throw new Error(data.error ?? 'Wystąpił błąd');
+    }
     return data as T;
   }
 

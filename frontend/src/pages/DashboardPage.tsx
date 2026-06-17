@@ -78,6 +78,7 @@ export function DashboardPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           {lists.map((list) => {
             const progress = calculateProgress(list.items ?? []);
+            const isShared = list.ownership === 'shared';
             return (
               <div
                 key={list.id}
@@ -88,14 +89,21 @@ export function DashboardPage() {
                     <h2 className="font-semibold text-navy hover:text-coral transition-colors">
                       {list.name}
                     </h2>
+                    {isShared && list.sharedByEmail && (
+                      <p className="text-xs text-coral mt-1">
+                        {pl.lists.sharedBadge} · {pl.lists.sharedFrom} {list.sharedByEmail}
+                      </p>
+                    )}
                   </Link>
-                  <button
-                    onClick={() => setDeleteId(list.id)}
-                    className="text-muted hover:text-red-500 p-1"
-                    aria-label={pl.lists.delete}
-                  >
-                    <FontAwesomeIcon icon={faTrash} className="text-sm" />
-                  </button>
+                  {!isShared && (
+                    <button
+                      onClick={() => setDeleteId(list.id)}
+                      className="text-muted hover:text-red-500 p-1"
+                      aria-label={pl.lists.delete}
+                    >
+                      <FontAwesomeIcon icon={faTrash} className="text-sm" />
+                    </button>
+                  )}
                 </div>
                 <Link to={`/app/lists/${list.id}`}>
                   <div className="h-2 rounded-full bg-border overflow-hidden mb-2">

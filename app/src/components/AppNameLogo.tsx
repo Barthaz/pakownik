@@ -16,9 +16,10 @@ const aspectRatio = nameLogoSource.width / nameLogoSource.height;
 
 interface AppNameLogoProps {
   style?: StyleProp<ImageStyle>;
+  align?: 'left' | 'center';
 }
 
-export function AppNameLogo({ style }: AppNameLogoProps) {
+export function AppNameLogo({ style, align = 'left' }: AppNameLogoProps) {
   const [width, setWidth] = useState(0);
 
   const onLayout = (event: LayoutChangeEvent) => {
@@ -29,7 +30,10 @@ export function AppNameLogo({ style }: AppNameLogoProps) {
   };
 
   return (
-    <View style={styles.wrap} onLayout={onLayout}>
+    <View
+      style={[styles.wrap, align === 'center' && styles.wrapCenter]}
+      onLayout={onLayout}
+    >
       {width > 0 ? (
         <Image
           source={nameLogoSource}
@@ -44,7 +48,10 @@ export function AppNameLogo({ style }: AppNameLogoProps) {
 
 const styles = StyleSheet.create({
   wrap: {
-    width: '100%',
-    alignSelf: 'stretch',
+    width: '80%',
+    alignSelf: 'flex-start',
+  },
+  wrapCenter: {
+    alignSelf: 'center',
   },
 });
