@@ -1,4 +1,5 @@
 import type { ListItem } from '@/models/types';
+import { getItemMemberLabel } from '@/models/itemAttribution';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheck, faTrash } from '@fortawesome/free-solid-svg-icons';
 import { groupByCategory } from '@/models/progress';
@@ -8,6 +9,7 @@ import { QuantityStepper } from '@/views/ui/QuantityStepper';
 
 interface ListItemsViewProps {
   items: ListItem[];
+  memberNames?: Record<string, string>;
   onToggle: (itemId: string) => void;
   onDelete?: (itemId: string) => void;
   onUpdateItem?: (itemId: string, data: { name?: string; quantity?: number }) => void;
@@ -18,6 +20,7 @@ interface ListItemsViewProps {
 
 export function ListItemsView({
   items,
+  memberNames = {},
   onToggle,
   onDelete,
   onUpdateItem,
@@ -56,7 +59,10 @@ export function ListItemsView({
             </button>
             {!isCollapsed && (
               <ul className="divide-y divide-border">
-                {catItems.map((item) => (
+                {catItems.map((item) => {
+                  const memberLabel = getItemMemberLabel(item, catItems, memberNames);
+
+                  return (
                   <li
                     key={item.id}
                     className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 ${item.packed ? 'opacity-60' : ''}`}
@@ -90,6 +96,9 @@ export function ListItemsView({
                         editable={canEditDetails}
                         onSave={(name) => onUpdateItem?.(item.id, { name })}
                       />
+                      {memberLabel && (
+                        <p className="text-xs text-muted mt-0.5 truncate">{memberLabel}</p>
+                      )}
                     </div>
                     {canEditDetails ? (
                       <QuantityStepper
@@ -109,7 +118,8 @@ export function ListItemsView({
                       </button>
                     )}
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             )}
           </div>

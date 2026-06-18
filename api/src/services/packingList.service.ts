@@ -43,19 +43,37 @@ export class PackingListService {
     ];
   }
 
+  private async resolveMemberNames(
+    listUserId: string,
+    memberIds: string[],
+  ): Promise<Record<string, string>> {
+    const names: Record<string, string> = {};
+    for (const memberId of memberIds) {
+      const member = await this.repo.getFamilyMemberById(memberId, listUserId);
+      if (member) names[memberId] = member.name;
+    }
+    return names;
+  }
+
   async getById(id: string, userId: string) {
     const access = await resolveListAccess(id, userId);
     if (!access) throw new Error('Lista nie znaleziona');
 
     const items = await this.repo.getListItems(id);
+    const memberNames = await this.resolveMemberNames(
+      access.list.userId,
+      access.list.selectedMemberIds,
+    );
+
     if (access.ownership === 'own') {
-      return { ...access.list, items, ownership: 'own' as const };
+      return { ...access.list, items, memberNames, ownership: 'own' as const };
     }
 
     const owner = await this.repo.findUserById(access.list.userId);
     return {
       ...access.list,
       items,
+      memberNames,
       ownership: 'shared' as const,
       sharedByEmail: owner?.email ?? '',
       myPermission: access.permission,
@@ -132,7 +150,8 @@ export class PackingListService {
 
     await this.repo.updatePackingList(list);
     const items = await this.repo.getListItems(id);
-    return { ...list, items, ownership: 'own' as const };
+    const memberNames = await this.resolveMemberNames(list.userId, list.selectedMemberIds);
+    return { ...list, items, memberNames, ownership: 'own' as const };
   }
 
   private async mergeFamilyItems(listId: string, userId: string, memberIds: string[]) {

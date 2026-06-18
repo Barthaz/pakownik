@@ -1,4 +1,21 @@
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
+function resolveApiUrl(): string {
+  const envUrl = import.meta.env.VITE_API_URL as string | undefined;
+
+  if (envUrl) {
+    if (typeof window !== 'undefined' && window.location.protocol === 'https:' && envUrl.startsWith('http://')) {
+      return envUrl.replace(/^http:\/\//, 'https://');
+    }
+    return envUrl.replace(/\/$/, '');
+  }
+
+  if (import.meta.env.PROD && typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+
+  return 'http://localhost:3001';
+}
+
+const API_URL = resolveApiUrl();
 
 class ApiClient {
   private getToken(): string | null {

@@ -27,3 +27,9 @@ export async function pingDb(): Promise<void> {
     connection.release();
   }
 }
+
+export async function prepareDb(): Promise<void> {
+  await pingDb();
+  const { ensureMigrations } = await import('./migrate.js');
+  await ensureMigrations();
+}

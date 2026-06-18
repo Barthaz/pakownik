@@ -38,9 +38,10 @@ interface InlineNameProps {
   onSave: (v: string) => void;
   packed?: boolean;
   editable?: boolean;
+  subtitle?: string | null;
 }
 
-export function InlineName({ value, onSave, packed, editable = true }: InlineNameProps) {
+export function InlineName({ value, onSave, packed, editable = true, subtitle }: InlineNameProps) {
   const [draft, setDraft] = useState(value);
   const [focused, setFocused] = useState(false);
 
@@ -52,20 +53,23 @@ export function InlineName({ value, onSave, packed, editable = true }: InlineNam
   };
 
   return (
-    <TextInput
-      value={focused ? draft : value}
-      onChangeText={setDraft}
-      onFocus={() => {
-        if (!editable) return;
-        setDraft(value);
-        setFocused(true);
-      }}
-      onBlur={commit}
-      onSubmitEditing={commit}
-      style={[styles.name, packed && styles.packed, !editable && styles.readonly]}
-      multiline={false}
-      editable={editable}
-    />
+    <View style={styles.nameWrap}>
+      <TextInput
+        value={focused ? draft : value}
+        onChangeText={setDraft}
+        onFocus={() => {
+          if (!editable) return;
+          setDraft(value);
+          setFocused(true);
+        }}
+        onBlur={commit}
+        onSubmitEditing={commit}
+        style={[styles.name, packed && styles.packed, !editable && styles.readonly]}
+        multiline={false}
+        editable={editable}
+      />
+      {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+    </View>
   );
 }
 
@@ -90,12 +94,18 @@ const styles = StyleSheet.create({
     color: colors.navy,
   },
   name: {
-    flex: 1,
     fontFamily: fonts.body,
     fontSize: 16,
     color: colors.navy,
     padding: 0,
     margin: 0,
+  },
+  nameWrap: { flex: 1, minWidth: 0 },
+  subtitle: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.muted,
+    marginTop: 2,
   },
   packed: { textDecorationLine: 'line-through', opacity: 0.6 },
   readonly: { opacity: 0.85 },

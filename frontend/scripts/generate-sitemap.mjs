@@ -3,7 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const siteUrl = (process.env.VITE_SITE_URL ?? 'https://pakownik.vercel.app').replace(/\/$/, '');
+const siteUrl = (process.env.VITE_SITE_URL ?? 'https://pakownik.pl').replace(/\/$/, '');
 
 const pages = [
   { loc: '/', changefreq: 'weekly', priority: '1.0' },

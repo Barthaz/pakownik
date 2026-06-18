@@ -38,6 +38,7 @@ export interface PackingList {
   createdAt: string;
   updatedAt: string;
   items?: ListItem[];
+  memberNames?: Record<string, string>;
   ownership?: ListOwnership;
   sharedByEmail?: string;
   myPermission?: SharePermission;

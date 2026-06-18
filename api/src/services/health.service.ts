@@ -38,8 +38,8 @@ export async function getHealthReport(version: string): Promise<HealthReport> {
   }
 
   try {
-    const { pingDb } = await import('../config/db.js');
-    await pingDb();
+    const { prepareDb } = await import('../config/db.js');
+    await prepareDb();
     return {
       status: 'ok',
       version,

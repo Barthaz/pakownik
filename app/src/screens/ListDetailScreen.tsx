@@ -6,13 +6,13 @@ import {
   StyleSheet,
   Alert,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import {
   faChevronLeft,
-  faUsers,
   faShareNodes,
   faTrash,
   faPlus,
@@ -44,8 +44,7 @@ export function ListDetailScreen({ route, navigation }: Props) {
   const [shares, setShares] = useState<ListShare[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [showShare, setShowShare] = useState(false);
-  const [showMembers, setShowMembers] = useState(false);
-  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [addingMemberId, setAddingMemberId] = useState<string | null>(null);
   const [shareEmail, setShareEmail] = useState('');
   const [sharePermission, setSharePermission] = useState<SharePermission>('checkoff');
   const [sharing, setSharing] = useState(false);
@@ -101,6 +100,15 @@ export function ListDetailScreen({ route, navigation }: Props) {
 
   const progress = calculateProgress(list.items ?? []);
   const availableMembers = members.filter((m) => !list.selectedMemberIds.includes(m.id));
+  const memberNames: Record<string, string> = {
+    ...(list.memberNames ?? {}),
+    ...Object.fromEntries(members.map((m) => [m.id, m.name])),
+  };
+  const addedMembers = list.selectedMemberIds
+    .map((id) => members.find((m) => m.id === id) ?? (memberNames[id] ? { id, name: memberNames[id] } : null))
+    .filter((m): m is { id: string; name: string } => m !== null);
+  const showMemberSection =
+    isOwner && (availableMembers.length > 0 || addedMembers.length > 0);
 
   const handleToggle = async (itemId: string) => {
     const item = list.items?.find((i) => i.id === itemId);
@@ -188,16 +196,17 @@ export function ListDetailScreen({ route, navigation }: Props) {
     ]);
   };
 
-  const handleAddMembers = async () => {
-    if (selectedMembers.length === 0) return;
+  const handleAddMember = async (memberId: string) => {
+    if (addingMemberId) return;
+    setAddingMemberId(memberId);
     try {
-      const updated = await packingListService.addMembers(listId, selectedMembers);
+      const updated = await packingListService.addMembers(listId, [memberId]);
       setList(updated);
-      setShowMembers(false);
-      setSelectedMembers([]);
     } catch (e) {
       if (isSessionExpiredError(e)) return;
       Alert.alert(pl.common.error, (e as Error).message);
+    } finally {
+      setAddingMemberId(null);
     }
   };
 
@@ -223,11 +232,6 @@ export function ListDetailScreen({ route, navigation }: Props) {
           <Text style={styles.backText}>{pl.common.back}</Text>
         </TouchableOpacity>
         <View style={styles.topActions}>
-          {isOwner && availableMembers.length > 0 && (
-            <TouchableOpacity onPress={() => setShowMembers(true)} hitSlop={8}>
-              <FontAwesomeIcon icon={faUsers} size={20} color={colors.navy} />
-            </TouchableOpacity>
-          )}
           {isOwner && (
             <TouchableOpacity onPress={openShareModal} hitSlop={8}>
               <FontAwesomeIcon icon={faShareNodes} size={20} color={colors.navy} />
@@ -252,8 +256,41 @@ export function ListDetailScreen({ route, navigation }: Props) {
       <Text style={styles.title}>{list.name}</Text>
       <ProgressBar progress={progress} />
 
+      {showMemberSection && (
+        <View style={styles.memberCard}>
+          <Text style={styles.memberTitle}>{pl.lists.addMembers}</Text>
+          <View style={styles.chips}>
+            {addedMembers.map((m) => (
+              <View key={m.id} style={[styles.chip, styles.chipAdded]}>
+                <Text style={styles.chipTextAdded}>{m.name}</Text>
+              </View>
+            ))}
+            {availableMembers.map((m) => {
+              const isAdding = addingMemberId === m.id;
+              const isBusy = addingMemberId !== null;
+
+              return (
+                <TouchableOpacity
+                  key={m.id}
+                  style={[styles.chip, styles.chipAdd, isBusy && styles.chipDisabled]}
+                  disabled={isBusy}
+                  onPress={() => handleAddMember(m.id)}
+                >
+                  {isAdding ? (
+                    <ActivityIndicator size="small" color={colors.coral} />
+                  ) : (
+                    <Text style={styles.chipTextAdd}>+ {m.name}</Text>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      )}
+
       <PackingListItems
         items={list.items ?? []}
+        memberNames={memberNames}
         onToggle={handleToggle}
         onUpdate={handleUpdate}
         onDelete={handleDelete}
@@ -319,27 +356,6 @@ export function ListDetailScreen({ route, navigation }: Props) {
           </View>
         )}
       </AppModal>
-
-      <AppModal visible={showMembers} title={pl.lists.addMembers} onClose={() => setShowMembers(false)}>
-        <View style={styles.chips}>
-          {availableMembers.map((m) => (
-            <TouchableOpacity
-              key={m.id}
-              style={[styles.chip, selectedMembers.includes(m.id) && styles.chipOn]}
-              onPress={() =>
-                setSelectedMembers((prev) =>
-                  prev.includes(m.id) ? prev.filter((id) => id !== m.id) : [...prev, m.id],
-                )
-              }
-            >
-              <Text style={[styles.chipText, selectedMembers.includes(m.id) && styles.chipTextOn]}>
-                {m.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        <Button title={pl.form.save} onPress={handleAddMembers} style={{ marginTop: spacing.md }} />
-      </AppModal>
     </Screen>
   );
 }
@@ -380,6 +396,21 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: fonts.heading,
     fontSize: 24,
+    color: colors.navy,
+    marginBottom: spacing.sm,
+  },
+  memberCard: {
+    backgroundColor: colors.white,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    ...shadows.sm,
+  },
+  memberTitle: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 14,
     color: colors.navy,
     marginBottom: spacing.sm,
   },
@@ -452,14 +483,25 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
+    minHeight: 36,
+    justifyContent: 'center',
   },
-  chipOn: { backgroundColor: 'rgba(232,168,124,0.15)', borderColor: colors.coral },
-  chipText: {
+  chipAdded: {
+    backgroundColor: 'rgba(232,168,124,0.1)',
+    borderColor: 'rgba(232,168,124,0.35)',
+  },
+  chipAdd: {
+    backgroundColor: colors.white,
+  },
+  chipDisabled: { opacity: 0.5 },
+  chipTextAdded: {
+    fontFamily: fonts.bodyMedium,
+    color: colors.navy,
+    fontSize: 14,
+  },
+  chipTextAdd: {
     fontFamily: fonts.body,
     color: colors.muted,
-  },
-  chipTextOn: {
-    color: colors.coralDark,
-    fontFamily: fonts.bodySemi,
+    fontSize: 14,
   },
 });

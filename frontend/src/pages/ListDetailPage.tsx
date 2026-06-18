@@ -25,8 +25,7 @@ export function ListDetailPage() {
   const { showToast } = useToast();
   const [showAdd, setShowAdd] = useState(false);
   const [showShare, setShowShare] = useState(false);
-  const [showMembers, setShowMembers] = useState(false);
-  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [addingMemberId, setAddingMemberId] = useState<string | null>(null);
   const [shares, setShares] = useState<ListShare[]>([]);
   const [shareEmail, setShareEmail] = useState('');
   const [sharePermission, setSharePermission] = useState<SharePermission>('checkoff');
@@ -82,15 +81,16 @@ export function ListDetailPage() {
     }
   };
 
-  const handleAddMembers = async () => {
-    if (selectedMembers.length === 0) return;
+  const handleAddMember = async (memberId: string) => {
+    if (addingMemberId) return;
+    setAddingMemberId(memberId);
     try {
-      await addMembers(selectedMembers);
-      showToast('Członkowie dodani do listy', 'success');
-      setShowMembers(false);
-      setSelectedMembers([]);
+      await addMembers([memberId]);
+      showToast('Członek dodany do listy', 'success');
     } catch (err) {
       showToast((err as Error).message, 'error');
+    } finally {
+      setAddingMemberId(null);
     }
   };
 
@@ -114,6 +114,15 @@ export function ListDetailPage() {
   }
 
   const availableMembers = members.filter((m) => !list.selectedMemberIds.includes(m.id));
+  const memberNames: Record<string, string> = {
+    ...(list.memberNames ?? {}),
+    ...Object.fromEntries(members.map((m) => [m.id, m.name])),
+  };
+  const addedMembers = list.selectedMemberIds
+    .map((id) => members.find((m) => m.id === id) ?? (memberNames[id] ? { id, name: memberNames[id] } : null))
+    .filter((m): m is { id: string; name: string } => m !== null);
+  const showMemberSection =
+    isOwner && (availableMembers.length > 0 || addedMembers.length > 0);
 
   return (
     <AppLayout>
@@ -140,11 +149,6 @@ export function ListDetailPage() {
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h1 className="text-2xl font-bold text-navy">{list.name}</h1>
         <div className="flex flex-wrap gap-2">
-          {isOwner && availableMembers.length > 0 && (
-            <Button variant="ghost" size="sm" onClick={() => setShowMembers(true)}>
-              {pl.lists.addMembers}
-            </Button>
-          )}
           {isOwner && (
             <Button variant="ghost" size="sm" onClick={openShareModal}>
               <FontAwesomeIcon icon={faShareNodes} />
@@ -164,8 +168,51 @@ export function ListDetailPage() {
         <PackingProgressBar progress={progress} />
       </div>
 
+      {showMemberSection && (
+        <div className="mb-6 rounded-2xl border border-border bg-white p-4">
+          <p className="text-sm font-medium text-navy mb-3">{pl.lists.addMembers}</p>
+          <div className="flex flex-wrap gap-2">
+            {addedMembers.map((m) => (
+              <span
+                key={m.id}
+                className="rounded-xl px-3 py-1.5 text-sm border border-coral/30 bg-coral/10 text-navy"
+              >
+                {m.name}
+              </span>
+            ))}
+            {availableMembers.map((m) => {
+              const isAdding = addingMemberId === m.id;
+              const isBusy = addingMemberId !== null;
+
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  disabled={isBusy}
+                  onClick={() => handleAddMember(m.id)}
+                  className={`inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-sm border transition-colors disabled:opacity-50 ${
+                    isAdding
+                      ? 'border-coral bg-coral/15 text-coral-dark'
+                      : 'border-border text-muted hover:border-coral/50 hover:text-navy'
+                  }`}
+                >
+                  {isAdding && (
+                    <span
+                      className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-coral border-t-transparent"
+                      aria-hidden
+                    />
+                  )}
+                  + {m.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <ListItemsView
         items={list.items ?? []}
+        memberNames={memberNames}
         onToggle={togglePacked}
         onDelete={deleteItem}
         onUpdateItem={updateItem}
@@ -229,39 +276,6 @@ export function ListDetailPage() {
             </ul>
           </div>
         )}
-      </Modal>
-
-      <Modal open={showMembers} onClose={() => setShowMembers(false)} title={pl.lists.addMembers}>
-        <div className="space-y-4">
-          <div className="flex flex-wrap gap-2">
-            {availableMembers.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() =>
-                  setSelectedMembers((prev) =>
-                    prev.includes(m.id) ? prev.filter((id) => id !== m.id) : [...prev, m.id],
-                  )
-                }
-                className={`rounded-xl px-3 py-1.5 text-sm border transition-colors ${
-                  selectedMembers.includes(m.id)
-                    ? 'border-coral bg-coral/15 text-coral-dark'
-                    : 'border-border text-muted hover:border-coral/50'
-                }`}
-              >
-                {m.name}
-              </button>
-            ))}
-          </div>
-          <div className="flex gap-3 justify-end">
-            <Button variant="ghost" onClick={() => setShowMembers(false)}>
-              {pl.form.cancel}
-            </Button>
-            <Button onClick={handleAddMembers} disabled={selectedMembers.length === 0}>
-              {pl.form.save}
-            </Button>
-          </div>
-        </div>
       </Modal>
     </AppLayout>
   );

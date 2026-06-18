@@ -2,12 +2,14 @@ import { View, Text, TouchableOpacity, StyleSheet, SectionList } from 'react-nat
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import { faCheck, faTrash } from '@fortawesome/free-solid-svg-icons';
 import type { ListItem } from '@/models/types';
+import { getItemMemberLabel } from '@/models/itemAttribution';
 import { groupByCategory } from '@/models/progress';
 import { InlineName, QuantityStepper } from './ListItemRow';
 import { colors, fonts, radius, shadows, spacing } from '@/theme';
 
 interface PackingListItemsProps {
   items: ListItem[];
+  memberNames?: Record<string, string>;
   onToggle: (id: string) => void;
   onUpdate: (id: string, data: { name?: string; quantity?: number }) => void;
   onDelete?: (id: string) => void;
@@ -17,6 +19,7 @@ interface PackingListItemsProps {
 
 export function PackingListItems({
   items,
+  memberNames = {},
   onToggle,
   onUpdate,
   onDelete,
@@ -44,7 +47,10 @@ export function PackingListItems({
       renderSectionHeader={({ section }) => (
         <Text style={styles.category}>{section.title}</Text>
       )}
-      renderItem={({ item }) => (
+      renderItem={({ item, section }) => {
+        const memberLabel = getItemMemberLabel(item, section.data, memberNames);
+
+        return (
         <View style={[styles.row, item.packed && styles.rowPacked]}>
           <TouchableOpacity
             style={[styles.check, item.packed && styles.checkOn, !canCheck && styles.checkDisabled]}
@@ -56,6 +62,7 @@ export function PackingListItems({
           <InlineName
             value={item.name}
             packed={item.packed}
+            subtitle={memberLabel}
             onSave={(name) => canEdit && onUpdate(item.id, { name })}
             editable={canEdit}
           />
@@ -70,7 +77,8 @@ export function PackingListItems({
             </TouchableOpacity>
           )}
         </View>
-      )}
+        );
+      }}
       ItemSeparatorComponent={() => <View style={styles.sep} />}
       SectionSeparatorComponent={() => <View style={styles.sectionGap} />}
       contentContainerStyle={styles.list}

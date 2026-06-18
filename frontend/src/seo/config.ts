@@ -1,7 +1,13 @@
-export const SITE_URL = (import.meta.env.VITE_SITE_URL ?? 'https://pakownik.vercel.app').replace(
-  /\/$/,
-  '',
-);
+function resolveSiteUrl(): string {
+  const fromEnv = import.meta.env.VITE_SITE_URL as string | undefined;
+  const base =
+    fromEnv ??
+    (typeof window !== 'undefined' ? window.location.origin : 'https://pakownik.pl');
+
+  return base.replace(/\/$/, '').replace(/^http:\/\//, 'https://');
+}
+
+export const SITE_URL = resolveSiteUrl();
 
 export const SITE_NAME = 'Pakownik';
 

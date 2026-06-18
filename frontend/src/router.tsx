@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom';
+import { GaPageTracker } from '@/analytics/GaPageTracker';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ToastProvider } from '@/contexts/ToastContext';
 import { ToastContainer } from '@/views/ui/ToastContainer';
@@ -17,6 +18,7 @@ import { RodoPage } from '@/pages/RodoPage';
 export function AppRouter() {
   return (
     <BrowserRouter>
+      <GaPageTracker />
       <AuthProvider>
         <ToastProvider>
           <Routes>
