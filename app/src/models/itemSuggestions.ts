@@ -3,6 +3,15 @@ export interface ItemSuggestion {
   category: string;
 }
 
+/** Lowercase + strip Polish diacritics for fuzzy matching (e.g. "lado" → "Ładowarkę"). */
+function normalizeForSearch(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/ł/g, 'l')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '');
+}
+
 export function collectItemSuggestions(
   members: { id: string; items?: { name: string; category: string }[] }[],
   excludeMemberId?: string | null,
@@ -13,7 +22,7 @@ export function collectItemSuggestions(
   for (const member of members) {
     if (excludeMemberId && member.id === excludeMemberId) continue;
     for (const item of member.items ?? []) {
-      const key = `${item.category.toLowerCase()}\0${item.name.toLowerCase()}`;
+      const key = `${normalizeForSearch(item.category)}\0${normalizeForSearch(item.name)}`;
       if (seen.has(key)) continue;
       seen.add(key);
       result.push({ name: item.name, category: item.category });
@@ -28,14 +37,14 @@ export function filterItemSuggestions(
   query: string,
   limit = 8,
 ): ItemSuggestion[] {
-  const q = query.trim().toLowerCase();
+  const q = normalizeForSearch(query.trim());
   if (!q) return [];
 
   return suggestions
     .filter(
       (s) =>
-        s.name.toLowerCase().includes(q) ||
-        s.category.toLowerCase().includes(q),
+        normalizeForSearch(s.name).includes(q) ||
+        normalizeForSearch(s.category).includes(q),
     )
     .slice(0, limit);
 }
