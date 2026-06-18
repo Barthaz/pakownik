@@ -25,12 +25,17 @@ export class PackingListController {
 
   async create(req: Request, res: Response) {
     try {
-      const { name, selectedMemberIds } = req.body;
+      const { name, selectedMemberIds, itemsByMember } = req.body;
       if (!name) {
         res.status(400).json({ error: 'Nazwa listy jest wymagana' });
         return;
       }
-      const list = await service.create(req.user!.userId, name, selectedMemberIds ?? []);
+      const list = await service.create(
+        req.user!.userId,
+        name,
+        selectedMemberIds ?? [],
+        itemsByMember,
+      );
       res.status(201).json(list);
     } catch (err) {
       res.status(400).json({ error: (err as Error).message });
@@ -57,12 +62,17 @@ export class PackingListController {
 
   async addMembers(req: Request, res: Response) {
     try {
-      const { memberIds } = req.body;
+      const { memberIds, itemsByMember } = req.body;
       if (!Array.isArray(memberIds)) {
         res.status(400).json({ error: 'memberIds musi być tablicą' });
         return;
       }
-      const list = await service.addMembers(param(req.params.id), req.user!.userId, memberIds);
+      const list = await service.addMembers(
+        param(req.params.id),
+        req.user!.userId,
+        memberIds,
+        itemsByMember,
+      );
       res.json(list);
     } catch (err) {
       res.status(404).json({ error: (err as Error).message });

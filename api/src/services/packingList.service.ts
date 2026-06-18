@@ -80,7 +80,12 @@ export class PackingListService {
     };
   }
 
-  async create(userId: string, name: string, selectedMemberIds: string[] = []) {
+  async create(
+    userId: string,
+    name: string,
+    selectedMemberIds: string[] = [],
+    itemsByMember?: Record<string, string[]>,
+  ) {
     const now = new Date().toISOString();
     const list: PackingList = {
       id: nanoid(),
@@ -96,7 +101,7 @@ export class PackingListService {
     await this.repo.createPackingList(list);
 
     if (selectedMemberIds.length > 0) {
-      await this.mergeFamilyItems(list.id, userId, selectedMemberIds);
+      await this.mergeFamilyItems(list.id, userId, selectedMemberIds, itemsByMember);
       list.selectedMemberIds = selectedMemberIds;
       list.updatedAt = new Date().toISOString();
       await this.repo.updatePackingList(list);
@@ -109,7 +114,11 @@ export class PackingListService {
   async update(
     id: string,
     userId: string,
-    data: Partial<Pick<PackingList, 'name' | 'sharePermission' | 'selectedMemberIds'>>,
+    data: Partial<
+      Pick<PackingList, 'name' | 'sharePermission' | 'selectedMemberIds'> & {
+        itemsByMember?: Record<string, string[]>;
+      }
+    >,
   ) {
     const list = await this.repo.getPackingListById(id, userId);
     if (!list) throw new Error('Lista nie znaleziona');
@@ -121,7 +130,7 @@ export class PackingListService {
       const newIds = data.selectedMemberIds.filter((mid) => !list.selectedMemberIds.includes(mid));
       list.selectedMemberIds = data.selectedMemberIds;
       if (newIds.length > 0) {
-        await this.mergeFamilyItems(list.id, userId, newIds);
+        await this.mergeFamilyItems(list.id, userId, newIds, data.itemsByMember);
       }
     }
 
@@ -136,7 +145,12 @@ export class PackingListService {
     if (!deleted) throw new Error('Lista nie znaleziona');
   }
 
-  async addMembers(id: string, userId: string, memberIds: string[]) {
+  async addMembers(
+    id: string,
+    userId: string,
+    memberIds: string[],
+    itemsByMember?: Record<string, string[]>,
+  ) {
     const list = await this.repo.getPackingListById(id, userId);
     if (!list) throw new Error('Lista nie znaleziona');
 
@@ -145,7 +159,7 @@ export class PackingListService {
     list.updatedAt = new Date().toISOString();
 
     if (newIds.length > 0) {
-      await this.mergeFamilyItems(list.id, userId, newIds);
+      await this.mergeFamilyItems(list.id, userId, newIds, itemsByMember);
     }
 
     await this.repo.updatePackingList(list);
@@ -154,7 +168,12 @@ export class PackingListService {
     return { ...list, items, memberNames, ownership: 'own' as const };
   }
 
-  private async mergeFamilyItems(listId: string, userId: string, memberIds: string[]) {
+  private async mergeFamilyItems(
+    listId: string,
+    userId: string,
+    memberIds: string[],
+    itemsByMember?: Record<string, string[]>,
+  ) {
     const existingItems = await this.repo.getListItems(listId);
 
     for (const memberId of memberIds) {
@@ -162,7 +181,13 @@ export class PackingListService {
       if (!member) continue;
 
       const memberItems = await this.repo.getFamilyMemberItems(memberId, userId);
-      for (const mi of memberItems) {
+      const selectedIds = itemsByMember?.[memberId];
+      const toMerge =
+        itemsByMember !== undefined
+          ? memberItems.filter((mi) => selectedIds?.includes(mi.id))
+          : memberItems;
+
+      for (const mi of toMerge) {
         const duplicate = existingItems.find(
           (ei) =>
             ei.familyMemberId === memberId &&

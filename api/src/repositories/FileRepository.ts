@@ -5,6 +5,7 @@ import type {
   DataStore,
   FamilyMember,
   FamilyMemberItem,
+  FamilyMemberShare,
   ListItem,
   ListShare,
   PackingList,
@@ -23,6 +24,7 @@ export class FileRepository implements IRepository {
     const raw = await fs.readFile(DATA_PATH, 'utf-8');
     const data = JSON.parse(raw) as DataStore;
     if (!data.listShares) data.listShares = [];
+    if (!data.familyMemberShares) data.familyMemberShares = [];
     return data;
   }
 
@@ -68,6 +70,11 @@ export class FileRepository implements IRepository {
     return data.familyMembers.find((m) => m.id === id && m.userId === userId);
   }
 
+  async getFamilyMemberByIdOnly(id: string): Promise<FamilyMember | undefined> {
+    const data = await this.read();
+    return data.familyMembers.find((m) => m.id === id);
+  }
+
   async createFamilyMember(member: FamilyMember): Promise<FamilyMember> {
     await this.mutate((data) => {
       data.familyMembers.push(member);
@@ -102,6 +109,10 @@ export class FileRepository implements IRepository {
   async getFamilyMemberItems(familyMemberId: string, userId: string): Promise<FamilyMemberItem[]> {
     const member = await this.getFamilyMemberById(familyMemberId, userId);
     if (!member) return [];
+    return this.getFamilyMemberItemsByMemberId(familyMemberId);
+  }
+
+  async getFamilyMemberItemsByMemberId(familyMemberId: string): Promise<FamilyMemberItem[]> {
     const data = await this.read();
     return data.familyMemberItems.filter((i) => i.familyMemberId === familyMemberId);
   }
@@ -117,6 +128,10 @@ export class FileRepository implements IRepository {
   async createFamilyMemberItem(item: FamilyMemberItem, userId: string): Promise<FamilyMemberItem> {
     const member = await this.getFamilyMemberById(item.familyMemberId, userId);
     if (!member) throw new Error('Family member not found');
+    return this.insertFamilyMemberItem(item);
+  }
+
+  async insertFamilyMemberItem(item: FamilyMemberItem): Promise<FamilyMemberItem> {
     await this.mutate((data) => {
       data.familyMemberItems.push(item);
     });
@@ -126,6 +141,10 @@ export class FileRepository implements IRepository {
   async updateFamilyMemberItem(item: FamilyMemberItem, userId: string): Promise<FamilyMemberItem> {
     const existing = await this.getFamilyMemberItemById(item.id, userId);
     if (!existing) throw new Error('Item not found');
+    return this.saveFamilyMemberItem(item);
+  }
+
+  async saveFamilyMemberItem(item: FamilyMemberItem): Promise<FamilyMemberItem> {
     await this.mutate((data) => {
       const idx = data.familyMemberItems.findIndex((i) => i.id === item.id);
       if (idx >= 0) data.familyMemberItems[idx] = item;
@@ -136,10 +155,18 @@ export class FileRepository implements IRepository {
   async deleteFamilyMemberItem(id: string, userId: string): Promise<boolean> {
     const existing = await this.getFamilyMemberItemById(id, userId);
     if (!existing) return false;
+    return this.removeFamilyMemberItem(id);
+  }
+
+  async removeFamilyMemberItem(id: string): Promise<boolean> {
+    let deleted = false;
     await this.mutate((data) => {
-      data.familyMemberItems = data.familyMemberItems.filter((i) => i.id !== id);
+      const idx = data.familyMemberItems.findIndex((i) => i.id === id);
+      if (idx < 0) return;
+      data.familyMemberItems.splice(idx, 1);
+      deleted = true;
     });
-    return true;
+    return deleted;
   }
 
   async getPackingLists(userId: string): Promise<PackingList[]> {
@@ -274,6 +301,75 @@ export class FileRepository implements IRepository {
     const normalized = email.trim().toLowerCase();
     await this.mutate((data) => {
       for (const share of data.listShares) {
+        if (
+          share.sharedWithEmail.toLowerCase() === normalized &&
+          share.recipientUserId === null
+        ) {
+          share.recipientUserId = userId;
+        }
+      }
+    });
+  }
+
+  async getFamilyMemberSharesByOwner(ownerUserId: string): Promise<FamilyMemberShare[]> {
+    const data = await this.read();
+    return data.familyMemberShares.filter((s) => s.sharedByUserId === ownerUserId);
+  }
+
+  async getFamilyMemberSharesForRecipient(userId: string): Promise<FamilyMemberShare[]> {
+    const data = await this.read();
+    return data.familyMemberShares.filter((s) => s.recipientUserId === userId);
+  }
+
+  async getFamilyMemberShareForRecipientAndMember(
+    userId: string,
+    memberId: string,
+  ): Promise<FamilyMemberShare | undefined> {
+    const data = await this.read();
+    return data.familyMemberShares.find(
+      (s) => s.recipientUserId === userId && s.familyMemberId === memberId,
+    );
+  }
+
+  async getFamilyMemberShareForMemberAndEmail(
+    memberId: string,
+    email: string,
+  ): Promise<FamilyMemberShare | undefined> {
+    const data = await this.read();
+    return data.familyMemberShares.find(
+      (s) =>
+        s.familyMemberId === memberId &&
+        s.sharedWithEmail.toLowerCase() === email.trim().toLowerCase(),
+    );
+  }
+
+  async getFamilyMemberShareById(shareId: string): Promise<FamilyMemberShare | undefined> {
+    const data = await this.read();
+    return data.familyMemberShares.find((s) => s.id === shareId);
+  }
+
+  async createFamilyMemberShare(share: FamilyMemberShare): Promise<FamilyMemberShare> {
+    await this.mutate((data) => {
+      data.familyMemberShares.push(share);
+    });
+    return share;
+  }
+
+  async deleteFamilyMemberShare(shareId: string): Promise<boolean> {
+    let deleted = false;
+    await this.mutate((data) => {
+      const idx = data.familyMemberShares.findIndex((s) => s.id === shareId);
+      if (idx < 0) return;
+      data.familyMemberShares.splice(idx, 1);
+      deleted = true;
+    });
+    return deleted;
+  }
+
+  async linkFamilySharesByEmail(userId: string, email: string): Promise<void> {
+    const normalized = email.trim().toLowerCase();
+    await this.mutate((data) => {
+      for (const share of data.familyMemberShares) {
         if (
           share.sharedWithEmail.toLowerCase() === normalized &&
           share.recipientUserId === null

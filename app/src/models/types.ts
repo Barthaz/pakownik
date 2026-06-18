@@ -1,5 +1,11 @@
 export type SharePermission = 'readonly' | 'checkoff' | 'full_edit';
 
+export type ItemsByMember = Record<string, string[]>;
+
+export type FamilyMemberSharePermission = 'readonly' | 'full_edit';
+
+export type FamilyMemberOwnership = 'own' | 'shared';
+
 export interface User {
   id: string;
   email: string;
@@ -25,6 +31,17 @@ export interface ListShare {
   sharedByUserId: string;
   recipientUserId: string | null;
   permission: SharePermission;
+  createdAt: string;
+}
+
+export interface FamilyMemberShare {
+  id: string;
+  familyMemberId: string;
+  familyMemberName?: string;
+  sharedWithEmail: string;
+  sharedByUserId: string;
+  recipientUserId: string | null;
+  permission: FamilyMemberSharePermission;
   createdAt: string;
 }
 
@@ -57,6 +74,9 @@ export interface FamilyMember {
   userId: string;
   name: string;
   items?: FamilyMemberItem[];
+  ownership?: FamilyMemberOwnership;
+  sharedByEmail?: string;
+  myPermission?: FamilyMemberSharePermission;
 }
 
 export interface PackingProgress {

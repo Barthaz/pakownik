@@ -1,5 +1,7 @@
 import type { User } from '@/models/types';
+import { AUTH_TOKEN_KEY } from '@/models/constants';
 import { apiClient } from './apiClient';
+import { getStoredItem, removeStoredItem, setStoredItem } from './persistentStorage';
 
 interface AuthResponse {
   user: User;
@@ -20,14 +22,14 @@ export const authService = {
   },
 
   saveToken(token: string) {
-    localStorage.setItem('pakownik_token', token);
+    setStoredItem(AUTH_TOKEN_KEY, token);
   },
 
   clearToken() {
-    localStorage.removeItem('pakownik_token');
+    removeStoredItem(AUTH_TOKEN_KEY);
   },
 
   getToken(): string | null {
-    return localStorage.getItem('pakownik_token');
+    return getStoredItem(AUTH_TOKEN_KEY);
   },
 };

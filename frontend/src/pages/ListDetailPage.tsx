@@ -13,8 +13,9 @@ import { Input } from '@/views/ui/Input';
 import { PackingProgressBar } from '@/views/lists/PackingProgress';
 import { ListItemsView } from '@/views/lists/ListItemsView';
 import { AddItemModal } from '@/views/lists/AddItemModal';
+import { MemberItemsPickModal } from '@/views/lists/MemberItemsPickModal';
 import { useToast } from '@/contexts/ToastContext';
-import type { ListShare, SharePermission } from '@/models/types';
+import type { FamilyMember, ListShare, SharePermission } from '@/models/types';
 import { listShareService } from '@/services/listShareService';
 
 export function ListDetailPage() {
@@ -26,6 +27,7 @@ export function ListDetailPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [addingMemberId, setAddingMemberId] = useState<string | null>(null);
+  const [pickMember, setPickMember] = useState<FamilyMember | null>(null);
   const [shares, setShares] = useState<ListShare[]>([]);
   const [shareEmail, setShareEmail] = useState('');
   const [sharePermission, setSharePermission] = useState<SharePermission>('checkoff');
@@ -81,17 +83,30 @@ export function ListDetailPage() {
     }
   };
 
-  const handleAddMember = async (memberId: string) => {
+  const handleAddMember = async (memberId: string, selectedItemIds: string[] = []) => {
     if (addingMemberId) return;
     setAddingMemberId(memberId);
     try {
-      await addMembers([memberId]);
+      await addMembers([memberId], { [memberId]: selectedItemIds });
       showToast('Członek dodany do listy', 'success');
     } catch (err) {
       showToast((err as Error).message, 'error');
     } finally {
       setAddingMemberId(null);
+      setPickMember(null);
     }
+  };
+
+  const openMemberPicker = (memberId: string) => {
+    if (addingMemberId) return;
+    const member = members.find((m) => m.id === memberId);
+    if (!member) return;
+    const memberItems = member.items ?? [];
+    if (memberItems.length === 0) {
+      void handleAddMember(memberId, []);
+      return;
+    }
+    setPickMember(member);
   };
 
   if (loading) {
@@ -189,7 +204,7 @@ export function ListDetailPage() {
                   key={m.id}
                   type="button"
                   disabled={isBusy}
-                  onClick={() => handleAddMember(m.id)}
+                  onClick={() => openMemberPicker(m.id)}
                   className={`inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-sm border transition-colors disabled:opacity-50 ${
                     isAdding
                       ? 'border-coral bg-coral/15 text-coral-dark'
@@ -223,6 +238,17 @@ export function ListDetailPage() {
       {canAddItems && (
         <AddItemModal open={showAdd} onClose={() => setShowAdd(false)} onSubmit={addItem} />
       )}
+
+      <MemberItemsPickModal
+        open={!!pickMember}
+        memberName={pickMember?.name ?? ''}
+        items={pickMember?.items ?? []}
+        submitting={addingMemberId === pickMember?.id}
+        onClose={() => setPickMember(null)}
+        onConfirm={(selectedItemIds) => {
+          if (pickMember) void handleAddMember(pickMember.id, selectedItemIds);
+        }}
+      />
 
       <Modal open={showShare} onClose={() => setShowShare(false)} title={pl.lists.share}>
         <form onSubmit={handleShare} className="space-y-4">

@@ -2,6 +2,7 @@ import type {
   DataStore,
   FamilyMember,
   FamilyMemberItem,
+  FamilyMemberShare,
   ListItem,
   ListShare,
   PackingList,
@@ -18,15 +19,35 @@ export interface IRepository {
 
   getFamilyMembers(userId: string): Promise<FamilyMember[]>;
   getFamilyMemberById(id: string, userId: string): Promise<FamilyMember | undefined>;
+  getFamilyMemberByIdOnly(id: string): Promise<FamilyMember | undefined>;
   createFamilyMember(member: FamilyMember): Promise<FamilyMember>;
   updateFamilyMember(member: FamilyMember): Promise<FamilyMember>;
   deleteFamilyMember(id: string, userId: string): Promise<boolean>;
 
   getFamilyMemberItems(familyMemberId: string, userId: string): Promise<FamilyMemberItem[]>;
+  getFamilyMemberItemsByMemberId(familyMemberId: string): Promise<FamilyMemberItem[]>;
   getFamilyMemberItemById(id: string, userId: string): Promise<FamilyMemberItem | undefined>;
+  insertFamilyMemberItem(item: FamilyMemberItem): Promise<FamilyMemberItem>;
+  saveFamilyMemberItem(item: FamilyMemberItem): Promise<FamilyMemberItem>;
+  removeFamilyMemberItem(id: string): Promise<boolean>;
   createFamilyMemberItem(item: FamilyMemberItem, userId: string): Promise<FamilyMemberItem>;
   updateFamilyMemberItem(item: FamilyMemberItem, userId: string): Promise<FamilyMemberItem>;
   deleteFamilyMemberItem(id: string, userId: string): Promise<boolean>;
+
+  getFamilyMemberSharesByOwner(ownerUserId: string): Promise<FamilyMemberShare[]>;
+  getFamilyMemberSharesForRecipient(userId: string): Promise<FamilyMemberShare[]>;
+  getFamilyMemberShareForRecipientAndMember(
+    userId: string,
+    memberId: string,
+  ): Promise<FamilyMemberShare | undefined>;
+  getFamilyMemberShareForMemberAndEmail(
+    memberId: string,
+    email: string,
+  ): Promise<FamilyMemberShare | undefined>;
+  getFamilyMemberShareById(shareId: string): Promise<FamilyMemberShare | undefined>;
+  createFamilyMemberShare(share: FamilyMemberShare): Promise<FamilyMemberShare>;
+  deleteFamilyMemberShare(shareId: string): Promise<boolean>;
+  linkFamilySharesByEmail(userId: string, email: string): Promise<void>;
 
   getPackingLists(userId: string): Promise<PackingList[]>;
   getPackingListById(id: string, userId: string): Promise<PackingList | undefined>;

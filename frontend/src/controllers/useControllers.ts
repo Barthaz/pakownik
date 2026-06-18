@@ -125,10 +125,10 @@ export function usePackingListController(listId?: string) {
   );
 
   const addMembers = useCallback(
-    async (memberIds: string[]) => {
+    async (memberIds: string[], itemsByMember?: import('@/models/types').ItemsByMember) => {
       if (!list) return;
       const { packingListService } = await import('@/services/packingListService');
-      const updated = await packingListService.addMembers(list.id, memberIds);
+      const updated = await packingListService.addMembers(list.id, memberIds, itemsByMember);
       setList(updated);
       return updated;
     },
@@ -170,9 +170,13 @@ export function usePackingListsController() {
   }, [load]);
 
   const createList = useCallback(
-    async (name: string, selectedMemberIds?: string[]) => {
+    async (
+      name: string,
+      selectedMemberIds?: string[],
+      itemsByMember?: import('@/models/types').ItemsByMember,
+    ) => {
       const { packingListService } = await import('@/services/packingListService');
-      const list = await packingListService.create(name, selectedMemberIds);
+      const list = await packingListService.create(name, selectedMemberIds, itemsByMember);
       setLists((prev) => [...prev, list]);
       return list;
     },

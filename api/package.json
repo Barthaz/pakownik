@@ -9,6 +9,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "db:migrate": "tsx scripts/db-migrate.ts",
+    "db:migrate:incremental": "tsx scripts/run-migrations.ts",
     "db:seed": "tsx scripts/db-seed.ts",
     "db:setup": "tsx scripts/db-migrate.ts && tsx scripts/db-seed.ts"
   },

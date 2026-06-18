@@ -1,5 +1,9 @@
 export type SharePermission = 'readonly' | 'checkoff' | 'full_edit';
 
+export type FamilyMemberSharePermission = 'readonly' | 'full_edit';
+
+export type FamilyMemberOwnership = 'own' | 'shared';
+
 export interface User {
   id: string;
   email: string;
@@ -15,6 +19,16 @@ export interface ListShare {
   sharedByUserId: string;
   recipientUserId: string | null;
   permission: SharePermission;
+  createdAt: string;
+}
+
+export interface FamilyMemberShare {
+  id: string;
+  familyMemberId: string;
+  sharedWithEmail: string;
+  sharedByUserId: string;
+  recipientUserId: string | null;
+  permission: FamilyMemberSharePermission;
   createdAt: string;
 }
 
@@ -62,6 +76,7 @@ export interface DataStore {
   packingLists: PackingList[];
   listItems: ListItem[];
   listShares: ListShare[];
+  familyMemberShares: FamilyMemberShare[];
 }
 
 export interface JwtPayload {

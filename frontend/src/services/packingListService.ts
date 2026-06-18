@@ -1,4 +1,4 @@
-import type { PackingList, ListItem, SharePermission } from '@/models/types';
+import type { ItemsByMember, PackingList, ListItem, SharePermission } from '@/models/types';
 import { apiClient } from './apiClient';
 
 export const packingListService = {
@@ -10,8 +10,12 @@ export const packingListService = {
     return apiClient.get<PackingList>(`/api/packing-lists/${id}`);
   },
 
-  create(name: string, selectedMemberIds?: string[]): Promise<PackingList> {
-    return apiClient.post<PackingList>('/api/packing-lists', { name, selectedMemberIds });
+  create(name: string, selectedMemberIds?: string[], itemsByMember?: ItemsByMember): Promise<PackingList> {
+    return apiClient.post<PackingList>('/api/packing-lists', {
+      name,
+      selectedMemberIds,
+      itemsByMember,
+    });
   },
 
   update(
@@ -25,8 +29,11 @@ export const packingListService = {
     return apiClient.delete(`/api/packing-lists/${id}`);
   },
 
-  addMembers(id: string, memberIds: string[]): Promise<PackingList> {
-    return apiClient.post<PackingList>(`/api/packing-lists/${id}/members`, { memberIds });
+  addMembers(id: string, memberIds: string[], itemsByMember?: ItemsByMember): Promise<PackingList> {
+    return apiClient.post<PackingList>(`/api/packing-lists/${id}/members`, {
+      memberIds,
+      itemsByMember,
+    });
   },
 
   createItem(

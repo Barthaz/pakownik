@@ -13,7 +13,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import { faPlus } from '@fortawesome/free-solid-svg-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import type { ListsStackParamList, PackingList } from '@/models/types';
+import type { FamilyMember, ItemsByMember, ListsStackParamList, PackingList } from '@/models/types';
 import { packingListService } from '@/services/packingListService';
 import { familyService } from '@/services/familyService';
 import { useAuth } from '@/contexts/AuthContext';
@@ -24,6 +24,7 @@ import { AppNameLogo } from '@/components/AppNameLogo';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { AppModal } from '@/components/AppModal';
+import { MemberItemsPickModal } from '@/components/MemberItemsPickModal';
 import { pl } from '@/models/pl';
 import { colors, fonts, radius, shadows, spacing } from '@/theme';
 
@@ -32,12 +33,15 @@ type Props = NativeStackScreenProps<ListsStackParamList, 'Lists'>;
 export function ListsScreen({ navigation }: Props) {
   const { logout } = useAuth();
   const [lists, setLists] = useState<PackingList[]>([]);
-  const [members, setMembers] = useState<{ id: string; name: string }[]>([]);
+  const [members, setMembers] = useState<FamilyMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
+  const [pickQueue, setPickQueue] = useState<FamilyMember[]>([]);
+  const [itemsByMember, setItemsByMember] = useState<ItemsByMember>({});
+  const [pendingCreateName, setPendingCreateName] = useState('');
 
   const load = useCallback(async () => {
     try {
@@ -46,7 +50,7 @@ export function ListsScreen({ navigation }: Props) {
         familyService.getAll(),
       ]);
       setLists(listsData);
-      setMembers(membersData.map((m) => ({ id: m.id, name: m.name })));
+      setMembers(membersData);
     } catch (e) {
       if (isSessionExpiredError(e)) return;
       Alert.alert(pl.common.error, (e as Error).message);
@@ -62,14 +66,20 @@ export function ListsScreen({ navigation }: Props) {
     }, [load]),
   );
 
-  const handleCreate = async () => {
-    if (!newName.trim()) return;
+  const resetCreateState = () => {
+    setShowCreate(false);
+    setNewName('');
+    setSelectedMembers([]);
+    setPickQueue([]);
+    setItemsByMember({});
+    setPendingCreateName('');
+  };
+
+  const finishCreate = async (name: string, memberIds: string[], selections: ItemsByMember) => {
     setCreating(true);
     try {
-      const list = await packingListService.create(newName.trim(), selectedMembers);
-      setShowCreate(false);
-      setNewName('');
-      setSelectedMembers([]);
+      const list = await packingListService.create(name, memberIds, selections);
+      resetCreateState();
       navigation.navigate('ListDetail', { listId: list.id });
     } catch (e) {
       if (isSessionExpiredError(e)) return;
@@ -77,6 +87,48 @@ export function ListsScreen({ navigation }: Props) {
     } finally {
       setCreating(false);
     }
+  };
+
+  const handleCreate = async () => {
+    if (!newName.trim()) return;
+
+    if (selectedMembers.length === 0) {
+      await finishCreate(newName.trim(), [], {});
+      return;
+    }
+
+    const selected = selectedMembers
+      .map((id) => members.find((m) => m.id === id))
+      .filter((m): m is FamilyMember => m !== undefined);
+    const withoutItems = selected.filter((m) => (m.items ?? []).length === 0);
+    const withItems = selected.filter((m) => (m.items ?? []).length > 0);
+    const initialSelections = Object.fromEntries(withoutItems.map((m) => [m.id, []]));
+
+    if (withItems.length === 0) {
+      await finishCreate(newName.trim(), selectedMembers, initialSelections);
+      return;
+    }
+
+    setPendingCreateName(newName.trim());
+    setItemsByMember(initialSelections);
+    setPickQueue(withItems);
+    setShowCreate(false);
+  };
+
+  const handlePickConfirm = async (selectedItemIds: string[]) => {
+    const current = pickQueue[0];
+    if (!current) return;
+
+    const nextSelections = { ...itemsByMember, [current.id]: selectedItemIds };
+    const rest = pickQueue.slice(1);
+
+    if (rest.length === 0) {
+      await finishCreate(pendingCreateName, selectedMembers, nextSelections);
+      return;
+    }
+
+    setItemsByMember(nextSelections);
+    setPickQueue(rest);
   };
 
   const toggleMember = (id: string) => {
@@ -173,6 +225,19 @@ export function ListsScreen({ navigation }: Props) {
         )}
         <Button title={pl.form.save} onPress={handleCreate} loading={creating} style={{ marginTop: spacing.md }} />
       </AppModal>
+
+      <MemberItemsPickModal
+        visible={pickQueue.length > 0}
+        memberName={pickQueue[0]?.name ?? ''}
+        items={pickQueue[0]?.items ?? []}
+        submitting={creating}
+        onClose={() => {
+          setPickQueue([]);
+          setItemsByMember({});
+          setPendingCreateName('');
+        }}
+        onConfirm={(selectedItemIds) => void handlePickConfirm(selectedItemIds)}
+      />
     </Screen>
   );
 }

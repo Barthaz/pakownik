@@ -1,3 +1,6 @@
+import { AUTH_TOKEN_KEY } from '@/models/constants';
+import { getStoredItem } from './persistentStorage';
+
 function resolveApiUrl(): string {
   const envUrl = import.meta.env.VITE_API_URL as string | undefined;
 
@@ -19,7 +22,7 @@ const API_URL = resolveApiUrl();
 
 class ApiClient {
   private getToken(): string | null {
-    return localStorage.getItem('pakownik_token');
+    return getStoredItem(AUTH_TOKEN_KEY);
   }
 
   private async request<T>(path: string, options: RequestInit = {}): Promise<T> {

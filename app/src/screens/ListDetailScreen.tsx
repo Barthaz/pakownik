@@ -18,7 +18,7 @@ import {
   faPlus,
   faCircleCheck,
 } from '@fortawesome/free-solid-svg-icons';
-import type { ListsStackParamList, ListShare, PackingList, SharePermission } from '@/models/types';
+import type { FamilyMember, ListsStackParamList, ListShare, PackingList, SharePermission } from '@/models/types';
 import { packingListService } from '@/services/packingListService';
 import { listShareService } from '@/services/listShareService';
 import { familyService } from '@/services/familyService';
@@ -29,6 +29,7 @@ import { ProgressBar } from '@/components/ProgressBar';
 import { PackingListItems } from '@/components/PackingListItems';
 import { AppModal } from '@/components/AppModal';
 import { AddItemForm } from '@/components/AddItemForm';
+import { MemberItemsPickModal } from '@/components/MemberItemsPickModal';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { SHARE_PERMISSION_LABELS } from '@/models/constants';
@@ -40,11 +41,12 @@ type Props = NativeStackScreenProps<ListsStackParamList, 'ListDetail'>;
 export function ListDetailScreen({ route, navigation }: Props) {
   const { listId } = route.params;
   const [list, setList] = useState<PackingList | null>(null);
-  const [members, setMembers] = useState<{ id: string; name: string }[]>([]);
+  const [members, setMembers] = useState<FamilyMember[]>([]);
   const [shares, setShares] = useState<ListShare[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [addingMemberId, setAddingMemberId] = useState<string | null>(null);
+  const [pickMember, setPickMember] = useState<FamilyMember | null>(null);
   const [shareEmail, setShareEmail] = useState('');
   const [sharePermission, setSharePermission] = useState<SharePermission>('checkoff');
   const [sharing, setSharing] = useState(false);
@@ -56,7 +58,7 @@ export function ListDetailScreen({ route, navigation }: Props) {
         familyService.getAll(),
       ]);
       setList(listData);
-      setMembers(membersData.map((m) => ({ id: m.id, name: m.name })));
+      setMembers(membersData);
     } catch (e) {
       if (isSessionExpiredError(e)) return;
       Alert.alert(pl.common.error, (e as Error).message);
@@ -196,18 +198,33 @@ export function ListDetailScreen({ route, navigation }: Props) {
     ]);
   };
 
-  const handleAddMember = async (memberId: string) => {
+  const handleAddMember = async (memberId: string, selectedItemIds: string[] = []) => {
     if (addingMemberId) return;
     setAddingMemberId(memberId);
     try {
-      const updated = await packingListService.addMembers(listId, [memberId]);
+      const updated = await packingListService.addMembers(listId, [memberId], {
+        [memberId]: selectedItemIds,
+      });
       setList(updated);
     } catch (e) {
       if (isSessionExpiredError(e)) return;
       Alert.alert(pl.common.error, (e as Error).message);
     } finally {
       setAddingMemberId(null);
+      setPickMember(null);
     }
+  };
+
+  const openMemberPicker = (memberId: string) => {
+    if (addingMemberId) return;
+    const member = members.find((m) => m.id === memberId);
+    if (!member) return;
+    const memberItems = member.items ?? [];
+    if (memberItems.length === 0) {
+      void handleAddMember(memberId, []);
+      return;
+    }
+    setPickMember(member);
   };
 
   const handleDeleteList = () => {
@@ -274,7 +291,7 @@ export function ListDetailScreen({ route, navigation }: Props) {
                   key={m.id}
                   style={[styles.chip, styles.chipAdd, isBusy && styles.chipDisabled]}
                   disabled={isBusy}
-                  onPress={() => handleAddMember(m.id)}
+                  onPress={() => openMemberPicker(m.id)}
                 >
                   {isAdding ? (
                     <ActivityIndicator size="small" color={colors.coral} />
@@ -307,6 +324,17 @@ export function ListDetailScreen({ route, navigation }: Props) {
       <AppModal visible={showAdd} title={pl.lists.addItem} onClose={() => setShowAdd(false)}>
         <AddItemForm onSubmit={handleAddItem} onCancel={() => setShowAdd(false)} />
       </AppModal>
+
+      <MemberItemsPickModal
+        visible={!!pickMember}
+        memberName={pickMember?.name ?? ''}
+        items={pickMember?.items ?? []}
+        submitting={addingMemberId === pickMember?.id}
+        onClose={() => setPickMember(null)}
+        onConfirm={(selectedItemIds) => {
+          if (pickMember) void handleAddMember(pickMember.id, selectedItemIds);
+        }}
+      />
 
       <AppModal visible={showShare} title={pl.lists.share} onClose={() => setShowShare(false)}>
         <Input

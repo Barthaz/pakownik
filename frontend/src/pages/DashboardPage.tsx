@@ -10,8 +10,10 @@ import { Button } from '@/views/ui/Button';
 import { Modal } from '@/views/ui/Modal';
 import { Input } from '@/views/ui/Input';
 import { ConfirmDialog } from '@/views/ui/ConfirmDialog';
+import { MemberItemsPickModal } from '@/views/lists/MemberItemsPickModal';
 import { calculateProgress } from '@/models/progress';
 import { useToast } from '@/contexts/ToastContext';
+import type { FamilyMember, ItemsByMember } from '@/models/types';
 
 export function DashboardPage() {
   const { lists, loading, createList, deleteList } = usePackingListsController();
@@ -22,22 +24,73 @@ export function DashboardPage() {
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [pickQueue, setPickQueue] = useState<FamilyMember[]>([]);
+  const [itemsByMember, setItemsByMember] = useState<ItemsByMember>({});
+  const [pendingCreateName, setPendingCreateName] = useState('');
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newName.trim()) return;
+  const resetCreateState = () => {
+    setShowCreate(false);
+    setNewName('');
+    setSelectedMembers([]);
+    setPickQueue([]);
+    setItemsByMember({});
+    setPendingCreateName('');
+  };
+
+  const finishCreate = async (name: string, memberIds: string[], selections: ItemsByMember) => {
     setCreating(true);
     try {
-      await createList(newName.trim(), selectedMembers);
+      await createList(name, memberIds, selections);
       showToast('Lista utworzona', 'success');
-      setShowCreate(false);
-      setNewName('');
-      setSelectedMembers([]);
+      resetCreateState();
     } catch (err) {
       showToast((err as Error).message, 'error');
     } finally {
       setCreating(false);
     }
+  };
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newName.trim()) return;
+
+    if (selectedMembers.length === 0) {
+      await finishCreate(newName.trim(), [], {});
+      return;
+    }
+
+    const selected = selectedMembers
+      .map((id) => members.find((m) => m.id === id))
+      .filter((m): m is FamilyMember => m !== undefined);
+    const withoutItems = selected.filter((m) => (m.items ?? []).length === 0);
+    const withItems = selected.filter((m) => (m.items ?? []).length > 0);
+    const initialSelections = Object.fromEntries(withoutItems.map((m) => [m.id, []]));
+
+    if (withItems.length === 0) {
+      await finishCreate(newName.trim(), selectedMembers, initialSelections);
+      return;
+    }
+
+    setPendingCreateName(newName.trim());
+    setItemsByMember(initialSelections);
+    setPickQueue(withItems);
+    setShowCreate(false);
+  };
+
+  const handlePickConfirm = async (selectedItemIds: string[]) => {
+    const current = pickQueue[0];
+    if (!current) return;
+
+    const nextSelections = { ...itemsByMember, [current.id]: selectedItemIds };
+    const rest = pickQueue.slice(1);
+
+    if (rest.length === 0) {
+      await finishCreate(pendingCreateName, selectedMembers, nextSelections);
+      return;
+    }
+
+    setItemsByMember(nextSelections);
+    setPickQueue(rest);
   };
 
   const handleDelete = async () => {
@@ -163,6 +216,19 @@ export function DashboardPage() {
           </div>
         </form>
       </Modal>
+
+      <MemberItemsPickModal
+        open={pickQueue.length > 0}
+        memberName={pickQueue[0]?.name ?? ''}
+        items={pickQueue[0]?.items ?? []}
+        submitting={creating}
+        onClose={() => {
+          setPickQueue([]);
+          setItemsByMember({});
+          setPendingCreateName('');
+        }}
+        onConfirm={(selectedItemIds) => void handlePickConfirm(selectedItemIds)}
+      />
 
       <ConfirmDialog
         open={!!deleteId}

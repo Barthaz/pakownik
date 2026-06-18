@@ -39,6 +39,7 @@ export class AuthService {
 
     await this.repo.createUser(user);
     await this.repo.linkSharesByEmail(user.id, normalizedEmail);
+    await this.repo.linkFamilySharesByEmail(user.id, normalizedEmail);
 
     const token = this.signToken({ userId: user.id, email: user.email });
     return { user: this.sanitizeUser(user), token };
@@ -57,6 +58,7 @@ export class AuthService {
     }
 
     await this.repo.linkSharesByEmail(user.id, normalizedEmail);
+    await this.repo.linkFamilySharesByEmail(user.id, normalizedEmail);
 
     const token = this.signToken({ userId: user.id, email: user.email });
     return { user: this.sanitizeUser(user), token };

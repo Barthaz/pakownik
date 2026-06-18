@@ -4,6 +4,7 @@ import type {
   DataStore,
   FamilyMember,
   FamilyMemberItem,
+  FamilyMemberShare,
   ListItem,
   ListShare,
   PackingList,
@@ -29,6 +30,18 @@ function mapListShare(row: RowDataPacket): ListShare {
   return {
     id: row.id,
     listId: row.list_id,
+    sharedWithEmail: row.shared_with_email,
+    sharedByUserId: row.shared_by_user_id,
+    recipientUserId: row.recipient_user_id ?? null,
+    permission: row.permission,
+    createdAt: toIso(row.created_at),
+  };
+}
+
+function mapFamilyMemberShare(row: RowDataPacket): FamilyMemberShare {
+  return {
+    id: row.id,
+    familyMemberId: row.family_member_id,
     sharedWithEmail: row.shared_with_email,
     sharedByUserId: row.shared_by_user_id,
     recipientUserId: row.recipient_user_id ?? null,
@@ -122,6 +135,7 @@ export class MysqlRepository implements IRepository {
       packingLists,
       listItems: listItems.map(mapListItem),
       listShares: [],
+      familyMemberShares: [],
     };
   }
 
@@ -182,6 +196,15 @@ export class MysqlRepository implements IRepository {
     return rows[0] ? mapFamilyMember(rows[0]) : undefined;
   }
 
+  async getFamilyMemberByIdOnly(id: string): Promise<FamilyMember | undefined> {
+    const pool = getPool();
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      'SELECT * FROM family_members WHERE id = ? LIMIT 1',
+      [id],
+    );
+    return rows[0] ? mapFamilyMember(rows[0]) : undefined;
+  }
+
   async createFamilyMember(member: FamilyMember): Promise<FamilyMember> {
     const pool = getPool();
     await pool.execute(
@@ -216,7 +239,10 @@ export class MysqlRepository implements IRepository {
   async getFamilyMemberItems(familyMemberId: string, userId: string): Promise<FamilyMemberItem[]> {
     const member = await this.getFamilyMemberById(familyMemberId, userId);
     if (!member) return [];
+    return this.getFamilyMemberItemsByMemberId(familyMemberId);
+  }
 
+  async getFamilyMemberItemsByMemberId(familyMemberId: string): Promise<FamilyMemberItem[]> {
     const pool = getPool();
     const [rows] = await pool.execute<RowDataPacket[]>(
       'SELECT * FROM family_member_items WHERE family_member_id = ? ORDER BY category, name',
@@ -240,7 +266,10 @@ export class MysqlRepository implements IRepository {
   async createFamilyMemberItem(item: FamilyMemberItem, userId: string): Promise<FamilyMemberItem> {
     const member = await this.getFamilyMemberById(item.familyMemberId, userId);
     if (!member) throw new Error('Family member not found');
+    return this.insertFamilyMemberItem(item);
+  }
 
+  async insertFamilyMemberItem(item: FamilyMemberItem): Promise<FamilyMemberItem> {
     const pool = getPool();
     await pool.execute(
       'INSERT INTO family_member_items (id, family_member_id, category, name, quantity) VALUES (?, ?, ?, ?, ?)',
@@ -252,7 +281,10 @@ export class MysqlRepository implements IRepository {
   async updateFamilyMemberItem(item: FamilyMemberItem, userId: string): Promise<FamilyMemberItem> {
     const existing = await this.getFamilyMemberItemById(item.id, userId);
     if (!existing) throw new Error('Item not found');
+    return this.saveFamilyMemberItem(item);
+  }
 
+  async saveFamilyMemberItem(item: FamilyMemberItem): Promise<FamilyMemberItem> {
     const pool = getPool();
     await pool.execute(
       'UPDATE family_member_items SET category = ?, name = ?, quantity = ? WHERE id = ?',
@@ -264,7 +296,10 @@ export class MysqlRepository implements IRepository {
   async deleteFamilyMemberItem(id: string, userId: string): Promise<boolean> {
     const existing = await this.getFamilyMemberItemById(id, userId);
     if (!existing) return false;
+    return this.removeFamilyMemberItem(id);
+  }
 
+  async removeFamilyMemberItem(id: string): Promise<boolean> {
     const pool = getPool();
     const [result] = await pool.execute<ResultSetHeader>(
       'DELETE FROM family_member_items WHERE id = ?',
@@ -488,6 +523,97 @@ export class MysqlRepository implements IRepository {
     const pool = getPool();
     await pool.execute(
       `UPDATE list_shares
+       SET recipient_user_id = ?
+       WHERE LOWER(shared_with_email) = LOWER(?) AND recipient_user_id IS NULL`,
+      [userId, email],
+    );
+  }
+
+  async getFamilyMemberSharesByOwner(ownerUserId: string): Promise<FamilyMemberShare[]> {
+    const pool = getPool();
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      'SELECT * FROM family_member_shares WHERE shared_by_user_id = ? ORDER BY created_at DESC',
+      [ownerUserId],
+    );
+    return rows.map(mapFamilyMemberShare);
+  }
+
+  async getFamilyMemberSharesForRecipient(userId: string): Promise<FamilyMemberShare[]> {
+    const pool = getPool();
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      'SELECT * FROM family_member_shares WHERE recipient_user_id = ? ORDER BY created_at DESC',
+      [userId],
+    );
+    return rows.map(mapFamilyMemberShare);
+  }
+
+  async getFamilyMemberShareForRecipientAndMember(
+    userId: string,
+    memberId: string,
+  ): Promise<FamilyMemberShare | undefined> {
+    const pool = getPool();
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      `SELECT * FROM family_member_shares
+       WHERE recipient_user_id = ? AND family_member_id = ? LIMIT 1`,
+      [userId, memberId],
+    );
+    return rows[0] ? mapFamilyMemberShare(rows[0]) : undefined;
+  }
+
+  async getFamilyMemberShareForMemberAndEmail(
+    memberId: string,
+    email: string,
+  ): Promise<FamilyMemberShare | undefined> {
+    const pool = getPool();
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      `SELECT * FROM family_member_shares
+       WHERE family_member_id = ? AND LOWER(shared_with_email) = LOWER(?) LIMIT 1`,
+      [memberId, email],
+    );
+    return rows[0] ? mapFamilyMemberShare(rows[0]) : undefined;
+  }
+
+  async getFamilyMemberShareById(shareId: string): Promise<FamilyMemberShare | undefined> {
+    const pool = getPool();
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      'SELECT * FROM family_member_shares WHERE id = ? LIMIT 1',
+      [shareId],
+    );
+    return rows[0] ? mapFamilyMemberShare(rows[0]) : undefined;
+  }
+
+  async createFamilyMemberShare(share: FamilyMemberShare): Promise<FamilyMemberShare> {
+    const pool = getPool();
+    await pool.execute(
+      `INSERT INTO family_member_shares
+        (id, family_member_id, shared_with_email, shared_by_user_id, recipient_user_id, permission, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        share.id,
+        share.familyMemberId,
+        share.sharedWithEmail,
+        share.sharedByUserId,
+        share.recipientUserId,
+        share.permission,
+        share.createdAt,
+      ],
+    );
+    return share;
+  }
+
+  async deleteFamilyMemberShare(shareId: string): Promise<boolean> {
+    const pool = getPool();
+    const [result] = await pool.execute<ResultSetHeader>(
+      'DELETE FROM family_member_shares WHERE id = ?',
+      [shareId],
+    );
+    return result.affectedRows > 0;
+  }
+
+  async linkFamilySharesByEmail(userId: string, email: string): Promise<void> {
+    const pool = getPool();
+    await pool.execute(
+      `UPDATE family_member_shares
        SET recipient_user_id = ?
        WHERE LOWER(shared_with_email) = LOWER(?) AND recipient_user_id IS NULL`,
       [userId, email],

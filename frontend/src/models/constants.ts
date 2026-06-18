@@ -9,6 +9,10 @@ export const DEFAULT_CATEGORIES = [
 
 export const GUEST_STORAGE_KEY = 'pakownik_guest_list';
 
+export const AUTH_TOKEN_KEY = 'pakownik_token';
+
+export const COOKIE_CONSENT_KEY = 'pakownik_cookie_consent';
+
 export const routes = {
   home: '/',
   login: '/logowanie',

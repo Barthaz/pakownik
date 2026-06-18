@@ -1,5 +1,6 @@
 import type { GuestList } from '@/models/types';
 import { GUEST_STORAGE_KEY } from '@/models/constants';
+import { getStoredItem, removeStoredItem, setStoredItem } from './persistentStorage';
 
 function generateId(): string {
   return crypto.randomUUID();
@@ -12,7 +13,7 @@ const defaultGuestList = (): GuestList => ({
 
 export const guestStorageService = {
   load(): GuestList {
-    const raw = localStorage.getItem(GUEST_STORAGE_KEY);
+    const raw = getStoredItem(GUEST_STORAGE_KEY);
     if (!raw) return defaultGuestList();
     try {
       return JSON.parse(raw) as GuestList;
@@ -22,11 +23,11 @@ export const guestStorageService = {
   },
 
   save(list: GuestList): void {
-    localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(list));
+    setStoredItem(GUEST_STORAGE_KEY, JSON.stringify(list));
   },
 
   clear(): void {
-    localStorage.removeItem(GUEST_STORAGE_KEY);
+    removeStoredItem(GUEST_STORAGE_KEY);
   },
 
   addItem(list: GuestList, data: { category: string; name: string; quantity: number }): GuestList {
