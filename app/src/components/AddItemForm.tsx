@@ -1,20 +1,46 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { DEFAULT_CATEGORIES } from '@/models/constants';
+import { collectItemSuggestions, type ItemSuggestion } from '@/models/itemSuggestions';
 import { Input } from './Input';
+import { ItemNameAutocomplete } from './ItemNameAutocomplete';
 import { Button } from './Button';
 import { pl } from '@/models/pl';
 import { spacing } from '@/theme';
 
+interface SuggestionMember {
+  id: string;
+  items?: { name: string; category: string }[];
+}
+
 interface AddItemFormProps {
   onSubmit: (data: { category: string; name: string; quantity: number }) => void;
   onCancel: () => void;
+  members?: SuggestionMember[];
+  excludeMemberId?: string | null;
 }
-export function AddItemForm({ onSubmit, onCancel }: AddItemFormProps) {
+
+export function AddItemForm({
+  onSubmit,
+  onCancel,
+  members = [],
+  excludeMemberId = null,
+}: AddItemFormProps) {
   const [category, setCategory] = useState<string>(DEFAULT_CATEGORIES[0]);
   const [name, setName] = useState('');
   const [quantity, setQuantity] = useState('1');
+
+  const suggestions = useMemo(
+    () => collectItemSuggestions(members, excludeMemberId),
+    [members, excludeMemberId],
+  );
+
+  useEffect(() => {
+    setCategory(DEFAULT_CATEGORIES[0]);
+    setName('');
+    setQuantity('1');
+  }, [excludeMemberId]);
 
   const handleSubmit = () => {
     if (!name.trim()) return;
@@ -27,6 +53,11 @@ export function AddItemForm({ onSubmit, onCancel }: AddItemFormProps) {
     setQuantity('1');
   };
 
+  const handleSuggestionSelect = (suggestion: ItemSuggestion) => {
+    setName(suggestion.name);
+    setCategory(suggestion.category);
+  };
+
   return (
     <View style={styles.form}>
       <Text style={styles.label}>{pl.form.category}</Text>
@@ -37,7 +68,18 @@ export function AddItemForm({ onSubmit, onCancel }: AddItemFormProps) {
           ))}
         </Picker>
       </View>
-      <Input label={pl.form.name} value={name} onChangeText={setName} placeholder="np. Koszulka" />
+      {suggestions.length > 0 ? (
+        <ItemNameAutocomplete
+          label={pl.form.name}
+          value={name}
+          onChange={setName}
+          onSelect={handleSuggestionSelect}
+          suggestions={suggestions}
+          placeholder="np. Koszulka"
+        />
+      ) : (
+        <Input label={pl.form.name} value={name} onChangeText={setName} placeholder="np. Koszulka" />
+      )}
       <Input
         label={pl.form.quantity}
         value={quantity}

@@ -14,6 +14,7 @@ import { PackingProgressBar } from '@/views/lists/PackingProgress';
 import { ListItemsView } from '@/views/lists/ListItemsView';
 import { AddItemModal } from '@/views/lists/AddItemModal';
 import { MemberItemsPickModal } from '@/views/lists/MemberItemsPickModal';
+import { FamilyMemberSelectChip } from '@/views/lists/FamilyMemberSelectChip';
 import { useToast } from '@/contexts/ToastContext';
 import type { FamilyMember, ListShare, SharePermission } from '@/models/types';
 import { listShareService } from '@/services/listShareService';
@@ -187,40 +188,25 @@ export function ListDetailPage() {
         <div className="mb-6 rounded-2xl border border-border bg-white p-4">
           <p className="text-sm font-medium text-navy mb-3">{pl.lists.addMembers}</p>
           <div className="flex flex-wrap gap-2">
-            {addedMembers.map((m) => (
-              <span
-                key={m.id}
-                className="rounded-xl px-3 py-1.5 text-sm border border-coral/30 bg-coral/10 text-navy"
-              >
-                {m.name}
-              </span>
-            ))}
-            {availableMembers.map((m) => {
-              const isAdding = addingMemberId === m.id;
-              const isBusy = addingMemberId !== null;
-
+            {addedMembers.map((m) => {
+              const member = members.find((fm) => fm.id === m.id);
               return (
-                <button
+                <FamilyMemberSelectChip
                   key={m.id}
-                  type="button"
-                  disabled={isBusy}
-                  onClick={() => openMemberPicker(m.id)}
-                  className={`inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-sm border transition-colors disabled:opacity-50 ${
-                    isAdding
-                      ? 'border-coral bg-coral/15 text-coral-dark'
-                      : 'border-border text-muted hover:border-coral/50 hover:text-navy'
-                  }`}
-                >
-                  {isAdding && (
-                    <span
-                      className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-coral border-t-transparent"
-                      aria-hidden
-                    />
-                  )}
-                  + {m.name}
-                </button>
+                  member={member ?? { id: m.id, userId: '', name: m.name }}
+                  variant="added"
+                />
               );
             })}
+            {availableMembers.map((m) => (
+              <FamilyMemberSelectChip
+                key={m.id}
+                member={m}
+                busy={addingMemberId === m.id}
+                disabled={addingMemberId !== null}
+                onClick={() => openMemberPicker(m.id)}
+              />
+            ))}
           </div>
         </div>
       )}
@@ -236,7 +222,12 @@ export function ListDetailPage() {
       />
 
       {canAddItems && (
-        <AddItemModal open={showAdd} onClose={() => setShowAdd(false)} onSubmit={addItem} />
+        <AddItemModal
+          open={showAdd}
+          onClose={() => setShowAdd(false)}
+          onSubmit={addItem}
+          members={members}
+        />
       )}
 
       <MemberItemsPickModal

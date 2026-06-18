@@ -232,11 +232,6 @@ export function FamilyScreen() {
                 onPress={() => setCollapsed((c) => ({ ...c, [item.id]: !c[item.id] }))}
                 activeOpacity={0.7}
               >
-                <FontAwesomeIcon
-                  icon={isCollapsed ? faChevronRight : faChevronDown}
-                  size={14}
-                  color={colors.muted}
-                />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.memberName}>{item.name}</Text>
                   {isShared && item.sharedByEmail && (
@@ -258,6 +253,17 @@ export function FamilyScreen() {
                     <FontAwesomeIcon icon={faTrash} size={18} color={colors.muted} />
                   </TouchableOpacity>
                 )}
+                <TouchableOpacity
+                  onPress={() => setCollapsed((c) => ({ ...c, [item.id]: !c[item.id] }))}
+                  hitSlop={8}
+                  accessibilityLabel={isCollapsed ? 'Rozwiń' : 'Zwiń'}
+                >
+                  <FontAwesomeIcon
+                    icon={isCollapsed ? faChevronRight : faChevronDown}
+                    size={22}
+                    color={colors.muted}
+                  />
+                </TouchableOpacity>
               </View>
             </View>
             {!isCollapsed && (
@@ -350,7 +356,13 @@ export function FamilyScreen() {
         title={pl.family.addItem}
         onClose={() => setAddItemMemberId(null)}
       >
-        <AddItemForm onSubmit={handleAddItem} onCancel={() => setAddItemMemberId(null)} />
+        <AddItemForm
+          key={addItemMemberId ?? 'closed'}
+          onSubmit={handleAddItem}
+          onCancel={() => setAddItemMemberId(null)}
+          members={members}
+          excludeMemberId={addItemMemberId}
+        />
       </AppModal>
     </Screen>
   );
@@ -486,9 +498,6 @@ const styles = StyleSheet.create({
   },
   cardHeaderToggle: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
     paddingRight: spacing.sm,
   },
   memberName: {

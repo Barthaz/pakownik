@@ -219,6 +219,7 @@ export const pl = {
     cancel: 'Anuluj',
     delete: 'Usuń',
     confirm: 'Potwierdź',
+    itemSuggestionsHint: 'Zacznij wpisywać nazwę — podpowiemy rzeczy z innych profili rodziny.',
   },
   legal: {
     acceptTerms: 'Akceptuję',

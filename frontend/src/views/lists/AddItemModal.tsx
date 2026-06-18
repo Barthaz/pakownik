@@ -1,21 +1,49 @@
 import { Modal } from '@/views/ui/Modal';
 import { Input } from '@/views/ui/Input';
+import { ItemNameAutocomplete } from '@/views/ui/ItemNameAutocomplete';
 import { Select } from '@/views/ui/Select';
 import { Button } from '@/views/ui/Button';
 import { DEFAULT_CATEGORIES } from '@/models/constants';
+import { collectItemSuggestions, type ItemSuggestion } from '@/models/itemSuggestions';
 import { pl } from '@/models/pl';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+
+interface SuggestionMember {
+  id: string;
+  items?: { name: string; category: string }[];
+}
 
 interface AddItemModalProps {
   open: boolean;
   onClose: () => void;
   onSubmit: (data: { category: string; name: string; quantity: number }) => void;
+  members?: SuggestionMember[];
+  excludeMemberId?: string | null;
 }
 
-export function AddItemModal({ open, onClose, onSubmit }: AddItemModalProps) {
+export function AddItemModal({
+  open,
+  onClose,
+  onSubmit,
+  members = [],
+  excludeMemberId = null,
+}: AddItemModalProps) {
   const [category, setCategory] = useState<string>(DEFAULT_CATEGORIES[0]);
   const [name, setName] = useState('');
   const [quantity, setQuantity] = useState('1');
+
+  const suggestions = useMemo(
+    () => (open ? collectItemSuggestions(members, excludeMemberId) : []),
+    [open, members, excludeMemberId],
+  );
+
+  useEffect(() => {
+    if (open) {
+      setCategory(DEFAULT_CATEGORIES[0]);
+      setName('');
+      setQuantity('1');
+    }
+  }, [open]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,6 +52,11 @@ export function AddItemModal({ open, onClose, onSubmit }: AddItemModalProps) {
     setName('');
     setQuantity('1');
     onClose();
+  };
+
+  const handleSuggestionSelect = (suggestion: ItemSuggestion) => {
+    setName(suggestion.name);
+    setCategory(suggestion.category);
   };
 
   return (
@@ -35,13 +68,25 @@ export function AddItemModal({ open, onClose, onSubmit }: AddItemModalProps) {
           onChange={(e) => setCategory(e.target.value)}
           options={DEFAULT_CATEGORIES.map((c) => ({ value: c, label: c }))}
         />
-        <Input
-          label={pl.form.name}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="np. Koszulka"
-          required
-        />
+        {suggestions.length > 0 ? (
+          <ItemNameAutocomplete
+            label={pl.form.name}
+            value={name}
+            onChange={setName}
+            onSelect={handleSuggestionSelect}
+            suggestions={suggestions}
+            placeholder="np. Koszulka"
+            required
+          />
+        ) : (
+          <Input
+            label={pl.form.name}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="np. Koszulka"
+            required
+          />
+        )}
         <Input
           label={pl.form.quantity}
           type="number"

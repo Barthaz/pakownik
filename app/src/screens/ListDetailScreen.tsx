@@ -6,7 +6,6 @@ import {
   StyleSheet,
   Alert,
   ScrollView,
-  ActivityIndicator,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
@@ -30,6 +29,7 @@ import { PackingListItems } from '@/components/PackingListItems';
 import { AppModal } from '@/components/AppModal';
 import { AddItemForm } from '@/components/AddItemForm';
 import { MemberItemsPickModal } from '@/components/MemberItemsPickModal';
+import { FamilyMemberSelectChip } from '@/components/FamilyMemberSelectChip';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { SHARE_PERMISSION_LABELS } from '@/models/constants';
@@ -277,30 +277,25 @@ export function ListDetailScreen({ route, navigation }: Props) {
         <View style={styles.memberCard}>
           <Text style={styles.memberTitle}>{pl.lists.addMembers}</Text>
           <View style={styles.chips}>
-            {addedMembers.map((m) => (
-              <View key={m.id} style={[styles.chip, styles.chipAdded]}>
-                <Text style={styles.chipTextAdded}>{m.name}</Text>
-              </View>
-            ))}
-            {availableMembers.map((m) => {
-              const isAdding = addingMemberId === m.id;
-              const isBusy = addingMemberId !== null;
-
+            {addedMembers.map((m) => {
+              const member = members.find((fm) => fm.id === m.id);
               return (
-                <TouchableOpacity
+                <FamilyMemberSelectChip
                   key={m.id}
-                  style={[styles.chip, styles.chipAdd, isBusy && styles.chipDisabled]}
-                  disabled={isBusy}
-                  onPress={() => openMemberPicker(m.id)}
-                >
-                  {isAdding ? (
-                    <ActivityIndicator size="small" color={colors.coral} />
-                  ) : (
-                    <Text style={styles.chipTextAdd}>+ {m.name}</Text>
-                  )}
-                </TouchableOpacity>
+                  member={member ?? { id: m.id, userId: '', name: m.name }}
+                  variant="added"
+                />
               );
             })}
+            {availableMembers.map((m) => (
+              <FamilyMemberSelectChip
+                key={m.id}
+                member={m}
+                busy={addingMemberId === m.id}
+                disabled={addingMemberId !== null}
+                onPress={() => openMemberPicker(m.id)}
+              />
+            ))}
           </View>
         </View>
       )}
@@ -322,7 +317,12 @@ export function ListDetailScreen({ route, navigation }: Props) {
       )}
 
       <AppModal visible={showAdd} title={pl.lists.addItem} onClose={() => setShowAdd(false)}>
-        <AddItemForm onSubmit={handleAddItem} onCancel={() => setShowAdd(false)} />
+        <AddItemForm
+          key={showAdd ? 'open' : 'closed'}
+          onSubmit={handleAddItem}
+          onCancel={() => setShowAdd(false)}
+          members={members}
+        />
       </AppModal>
 
       <MemberItemsPickModal

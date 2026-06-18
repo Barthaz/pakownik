@@ -80,6 +80,7 @@ export const pl = {
     save: 'Zapisz',
     cancel: 'Anuluj',
     delete: 'Usuń',
+    itemSuggestionsHint: 'Zacznij wpisywać nazwę — podpowiemy rzeczy z innych profili rodziny.',
   },
   common: {
     loading: 'Ładowanie...',

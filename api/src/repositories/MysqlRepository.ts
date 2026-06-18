@@ -237,8 +237,12 @@ export class MysqlRepository implements IRepository {
   }
 
   async getFamilyMemberItems(familyMemberId: string, userId: string): Promise<FamilyMemberItem[]> {
-    const member = await this.getFamilyMemberById(familyMemberId, userId);
-    if (!member) return [];
+    const owned = await this.getFamilyMemberById(familyMemberId, userId);
+    if (owned) return this.getFamilyMemberItemsByMemberId(familyMemberId);
+
+    const share = await this.getFamilyMemberShareForRecipientAndMember(userId, familyMemberId);
+    if (!share) return [];
+
     return this.getFamilyMemberItemsByMemberId(familyMemberId);
   }
 

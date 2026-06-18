@@ -7,6 +7,7 @@ import {
   filterItemUpdate,
   resolveListAccess,
 } from './listAccess.js';
+import { resolveMemberAccess } from './familyMemberAccess.js';
 
 export class PackingListService {
   private repo = getRepository();
@@ -49,10 +50,17 @@ export class PackingListService {
   ): Promise<Record<string, string>> {
     const names: Record<string, string> = {};
     for (const memberId of memberIds) {
-      const member = await this.repo.getFamilyMemberById(memberId, listUserId);
-      if (member) names[memberId] = member.name;
+      const access = await resolveMemberAccess(memberId, listUserId);
+      if (access) names[memberId] = access.member.name;
     }
     return names;
+  }
+
+  private async assertMembersAccessible(userId: string, memberIds: string[]) {
+    for (const memberId of memberIds) {
+      const access = await resolveMemberAccess(memberId, userId);
+      if (!access) throw new Error('Członek rodziny nie znaleziony');
+    }
   }
 
   async getById(id: string, userId: string) {
@@ -101,6 +109,7 @@ export class PackingListService {
     await this.repo.createPackingList(list);
 
     if (selectedMemberIds.length > 0) {
+      await this.assertMembersAccessible(userId, selectedMemberIds);
       await this.mergeFamilyItems(list.id, userId, selectedMemberIds, itemsByMember);
       list.selectedMemberIds = selectedMemberIds;
       list.updatedAt = new Date().toISOString();
@@ -130,6 +139,7 @@ export class PackingListService {
       const newIds = data.selectedMemberIds.filter((mid) => !list.selectedMemberIds.includes(mid));
       list.selectedMemberIds = data.selectedMemberIds;
       if (newIds.length > 0) {
+        await this.assertMembersAccessible(userId, newIds);
         await this.mergeFamilyItems(list.id, userId, newIds, data.itemsByMember);
       }
     }
@@ -155,6 +165,9 @@ export class PackingListService {
     if (!list) throw new Error('Lista nie znaleziona');
 
     const newIds = memberIds.filter((mid) => !list.selectedMemberIds.includes(mid));
+    if (memberIds.length > 0) {
+      await this.assertMembersAccessible(userId, memberIds);
+    }
     list.selectedMemberIds = [...new Set([...list.selectedMemberIds, ...memberIds])];
     list.updatedAt = new Date().toISOString();
 
@@ -177,10 +190,10 @@ export class PackingListService {
     const existingItems = await this.repo.getListItems(listId);
 
     for (const memberId of memberIds) {
-      const member = await this.repo.getFamilyMemberById(memberId, userId);
-      if (!member) continue;
+      const access = await resolveMemberAccess(memberId, userId);
+      if (!access) continue;
 
-      const memberItems = await this.repo.getFamilyMemberItems(memberId, userId);
+      const memberItems = await this.repo.getFamilyMemberItemsByMemberId(memberId);
       const selectedIds = itemsByMember?.[memberId];
       const toMerge =
         itemsByMember !== undefined

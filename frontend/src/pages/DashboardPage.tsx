@@ -11,6 +11,7 @@ import { Modal } from '@/views/ui/Modal';
 import { Input } from '@/views/ui/Input';
 import { ConfirmDialog } from '@/views/ui/ConfirmDialog';
 import { MemberItemsPickModal } from '@/views/lists/MemberItemsPickModal';
+import { FamilyMemberSelectChip } from '@/views/lists/FamilyMemberSelectChip';
 import { calculateProgress } from '@/models/progress';
 import { useToast } from '@/contexts/ToastContext';
 import type { FamilyMember, ItemsByMember } from '@/models/types';
@@ -190,18 +191,12 @@ export function DashboardPage() {
               <p className="text-sm font-medium text-navy mb-2">{pl.lists.addMembers}</p>
               <div className="flex flex-wrap gap-2">
                 {members.map((m) => (
-                  <button
+                  <FamilyMemberSelectChip
                     key={m.id}
-                    type="button"
+                    member={m}
+                    selected={selectedMembers.includes(m.id)}
                     onClick={() => toggleMember(m.id)}
-                    className={`rounded-xl px-3 py-1.5 text-sm border transition-colors ${
-                      selectedMembers.includes(m.id)
-                        ? 'border-coral bg-coral/15 text-coral-dark'
-                        : 'border-border text-muted hover:border-coral/50'
-                    }`}
-                  >
-                    {m.name}
-                  </button>
+                  />
                 ))}
               </div>
             </div>

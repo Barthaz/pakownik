@@ -25,6 +25,7 @@ import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { AppModal } from '@/components/AppModal';
 import { MemberItemsPickModal } from '@/components/MemberItemsPickModal';
+import { FamilyMemberSelectChip } from '@/components/FamilyMemberSelectChip';
 import { pl } from '@/models/pl';
 import { colors, fonts, radius, shadows, spacing } from '@/theme';
 
@@ -210,15 +211,12 @@ export function ListsScreen({ navigation }: Props) {
             <Text style={styles.membersLabel}>{pl.lists.addMembers}</Text>
             <View style={styles.chips}>
               {members.map((m) => (
-                <TouchableOpacity
+                <FamilyMemberSelectChip
                   key={m.id}
-                  style={[styles.chip, selectedMembers.includes(m.id) && styles.chipOn]}
+                  member={m}
+                  selected={selectedMembers.includes(m.id)}
                   onPress={() => toggleMember(m.id)}
-                >
-                  <Text style={[styles.chipText, selectedMembers.includes(m.id) && styles.chipTextOn]}>
-                    {m.name}
-                  </Text>
-                </TouchableOpacity>
+                />
               ))}
             </View>
           </View>

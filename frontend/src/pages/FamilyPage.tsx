@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlus, faTrash, faShareNodes } from '@fortawesome/free-solid-svg-icons';
+import { faPlus, faTrash, faShareNodes, faChevronDown, faChevronRight } from '@fortawesome/free-solid-svg-icons';
 import { AppLayout } from '@/views/layout/AppLayout';
 import { useFamilyController } from '@/controllers/useControllers';
 import { pl } from '@/models/pl';
@@ -168,7 +168,7 @@ export function FamilyPage() {
                 <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
                   <button
                     type="button"
-                    className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left hover:opacity-80 transition-opacity"
+                    className="flex min-w-0 flex-1 text-left hover:opacity-80 transition-opacity"
                     onClick={() =>
                       setCollapsed((c) => ({ ...c, [member.id]: !c[member.id] }))
                     }
@@ -183,11 +183,8 @@ export function FamilyPage() {
                       )}
                       <p className="text-sm text-muted mt-0.5">{statsLabel}</p>
                     </div>
-                    <span className="text-sm text-muted shrink-0" aria-hidden>
-                      {isCollapsed ? '▸' : '▾'}
-                    </span>
                   </button>
-                  <div className="flex gap-2 shrink-0">
+                  <div className="flex items-center gap-1 shrink-0">
                     {canEdit && (
                       <Button variant="ghost" size="sm" onClick={() => setAddItemMemberId(member.id)}>
                         <FontAwesomeIcon icon={faPlus} />
@@ -203,6 +200,20 @@ export function FamilyPage() {
                         <FontAwesomeIcon icon={faTrash} className="text-sm" />
                       </button>
                     )}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCollapsed((c) => ({ ...c, [member.id]: !c[member.id] }))
+                      }
+                      className="text-muted hover:text-navy p-2"
+                      aria-expanded={!isCollapsed}
+                      aria-label={isCollapsed ? 'Rozwiń' : 'Zwiń'}
+                    >
+                      <FontAwesomeIcon
+                        icon={isCollapsed ? faChevronRight : faChevronDown}
+                        className="text-xl"
+                      />
+                    </button>
                   </div>
                 </div>
                 {!isCollapsed && (
@@ -337,6 +348,8 @@ export function FamilyPage() {
         open={!!addItemMemberId}
         onClose={() => setAddItemMemberId(null)}
         onSubmit={handleAddItem}
+        members={members}
+        excludeMemberId={addItemMemberId}
       />
 
       <ConfirmDialog
